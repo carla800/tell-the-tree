@@ -112,3 +112,24 @@ def test_birth_after_death_is_rejected(villa):
     tree, _ = villa
     ops, _ = normalize_ops([{"op": "event", "person": "Ada Lovelace", "type": "death", "date": "1801"}])
     assert make_plan(tree, ops).status == "reject"
+
+
+def test_date_parts_read_the_same_day_written_differently():
+    from backend.tree import date_parts
+    assert date_parts("1816-12-30") == date_parts("30 December 1816") == date_parts("30 dicembre 1816") == (1816, 12, 30)
+    assert date_parts("December 1816") == (1816, 12, None)
+    assert date_parts("about 1815") == (1815, None, None)
+    assert date_parts(None) == (None, None, None)
+
+
+def test_an_event_already_in_the_tree_is_not_added_twice(villa):
+    """The demo data stores the wedding as 1816-12-30; the sentence says 30 December 1816."""
+    tree, ids = villa
+    choices = {"Percy": ids["percy-shelley"], "Mary": ids["mary-shelley"]}
+    same = [{"op": "event", "partners": ["Percy", "Mary"], "type": "marriage", "date": "30 December 1816"}]
+    plan = make_plan(tree, normalize_ops(same)[0], choices=choices)
+    assert plan.status == "save" and plan.changes == []
+    assert any("already in the tree" in k for k in plan.known)
+    # a new detail is still added
+    other = [{"op": "event", "person": "Mary Shelley", "type": "residence", "place": "Villa Diodati"}]
+    assert make_plan(tree, normalize_ops(other)[0]).changes

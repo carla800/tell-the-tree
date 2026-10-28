@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass, field
 
 from .ops import EVENT_TYPES
-from .tree import PARENT_LINKS, Claim, Event, Family, Person, Tree, year_of
+from .tree import PARENT_LINKS, Claim, Event, Family, Person, Tree, date_parts, year_of
 
 
 @dataclass
@@ -292,6 +292,10 @@ class Planner:
             fam = self._union(a, b, "marriage" if etype == "marriage" else "unknown")
             target = {"family": fam.id}
             who = f"{self.name(a)} and {self.name(b)}"
+        details = ", ".join(x for x in (op.get("date"), op.get("place"), op.get("description")) if x)
+        if self._event_known(target, etype, op):
+            self.plan.known.append(f"{who}: {etype}" + (f" ({details})" if details else "") + " is already in the tree")
+            return
         event = {
             "action": "add_event", **target, "type": etype,
             "date_text": op.get("date"), "place": op.get("place"), "description": op.get("description"),
@@ -299,8 +303,21 @@ class Planner:
         self.tree.events.append(Event(self._tmp_id(), etype, target.get("person"), target.get("family"),
                                       op.get("date"), op.get("place"), op.get("description")))
         self.plan.changes.append(event)
-        details = ", ".join(x for x in (op.get("date"), op.get("place"), op.get("description")) if x)
         self.plan.summary.append(f"{who}: {etype}" + (f" ({details})" if details else ""))
+
+    def _event_known(self, target: dict, etype: str, op: dict) -> bool:
+        """True when an event already in the tree says everything this one says
+        (same day written differently, or less detail). New details are always added."""
+        new = date_parts(op.get("date"))
+        for e in self.tree.events:
+            if e.type != etype or e.person_id != target.get("person") or e.family_id != target.get("family"):
+                continue
+            old = date_parts(e.date_text)
+            if any(n is not None and n != o for n, o in zip(new, old)):
+                continue
+            if all(_contains(getattr(e, f), op.get(f)) for f in ("place", "description")):
+                return True
+        return False
 
     def _event_dates_ok(self, pid: int, etype: str, year: int | None) -> bool:
         if year is None:
@@ -398,6 +415,10 @@ class Planner:
         elif self.plan.questions:
             self.plan.status = "ask"
         return self.plan
+
+
+def _contains(known: str | None, new: str | None) -> bool:
+    return not new or (known is not None and new.strip().lower() in known.lower())
 
 
 def make_plan(tree: Tree, ops: list[dict], choices: dict | None = None) -> Plan:

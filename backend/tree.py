@@ -162,6 +162,29 @@ def year_of(date_text: str | None) -> int | None:
     return int(m.group(1)) if m else None
 
 
+MONTHS = {
+    "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6, "july": 7,
+    "august": 8, "september": 9, "october": 10, "november": 11, "december": 12,
+    "gennaio": 1, "febbraio": 2, "marzo": 3, "aprile": 4, "maggio": 5, "giugno": 6, "luglio": 7,
+    "agosto": 8, "settembre": 9, "ottobre": 10, "novembre": 11, "dicembre": 12,
+}
+
+
+def date_parts(date_text: str | None) -> tuple[int | None, int | None, int | None]:
+    """(year, month, day), each None when the text doesn't say it.
+    '1816-12-30', '30 December 1816' and '30 dicembre 1816' are the same day."""
+    if not date_text:
+        return (None, None, None)
+    text = str(date_text).lower()
+    iso = re.search(r"\b(\d{4})-(\d{2})(?:-(\d{2}))?\b", text)
+    if iso:
+        return (int(iso.group(1)), int(iso.group(2)), int(iso.group(3)) if iso.group(3) else None)
+    year = year_of(text)
+    month = next((n for word, n in MONTHS.items() if re.search(rf"\b{word}\b", text)), None)
+    day = re.search(r"\b(\d{1,2})(?:st|nd|rd|th)?\b", re.sub(r"\b\d{4}\b", "", text)) if month else None
+    return (year, month, int(day.group(1)) if day else None)
+
+
 def load_tree(conn: sqlite3.Connection) -> Tree:
     tree = Tree()
     for r in conn.execute("SELECT * FROM person"):

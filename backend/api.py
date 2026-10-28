@@ -83,9 +83,8 @@ def _tree_json(conn) -> dict:
 
 
 def _plan_json(plan) -> dict:
-    data = asdict(plan)
-    data.pop("changes")   # internal detail; the summary says the same in plain words
-    return data
+    # `changes` lets the interface draw the preview in the tree (new people have negative ids)
+    return asdict(plan)
 
 
 @app.get("/api/trees")

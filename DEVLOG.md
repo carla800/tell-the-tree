@@ -98,3 +98,27 @@ Three of the four failures had the same cause, and it was my format, not Gemma: 
 Still wrong: d06, the longest sentence. Gemma loses "their only child, Ada" (the parent link) and copies "London" from Ada's birth onto the wedding. A small-model limit with long sentences: something to say honestly in the post.
 
 Replaying run 3's exact answers through the new code: **model 14/15, code 15/15.**
+
+## Run 4 - same code, run for real
+
+**Model 14/15, code 15/15**, the same result as the replay: so the replay wasn't luck. 15 sentences in about 0.8 minutes on my laptop: the first one takes ~19 s (Gemma loading), then 2-5 s each. The only failure is still d06, the long sentence.
+
+## First live test, from the API page
+
+I started the server and tried a sentence that isn't in any test: **"Allegra era la nipote di Mary Shelley."** The app read "nipote", saw that the tree already explains it as niece (Allegra is the daughter of Claire, Mary's stepsister), and asked nothing. The first answer took 22.7 s, because Gemma was loading.
+
+## The interface
+
+React + TypeScript, React Flow for the tree, dagre for the layout. Nothing leaves the computer: even the fonts are files inside the app, not loaded from Google.
+
+- **Two looks.** The Villa Diodati demo is June 1816, "the year without a summer": storm-blue night, a moon, parchment cards, and three bats that cross the sky once (not if the computer asks for reduced motion). Every other tree is an old family register: pale paper, ink, a red rule under each name.
+- **Generations are columns, read left to right.** The first version went top to bottom like most family trees, but the demo has 11 people in one generation and the cards became unreadable. Sideways, the same tree fits the screen and the names can be read.
+- **You see the change before it happens.** After Gemma reads a sentence, the new people and lines appear in the tree, dashed and marked "new", and the view moves to them. Nothing is saved until "Add to tree".
+- **Questions stay visible.** "Which Percy do you mean?" stays on screen with your answer while the app asks about Mary.
+- **Every fact shows where it came from**: click a person to see their dates, places, and the sentence or web page each one came from.
+- A key explains the lines (child, stepchild, adopted) and the knots (married, together but not married, parents).
+- The tip "One fact per sentence works best" is under the text box, because of d06.
+
+I tested it with a fake Gemma that gives the ideal answers, so the screenshots check the interface, not the model.
+
+**A bug the interface found.** "Percy married Mary on 30 December 1816" wanted to add the wedding again: the demo data has it as 1816-12-30, and the app compared the text. Now dates are read as day, month and year (English or Italian months), and an event the tree already has, written differently or with less detail, is listed under "already knows" instead of being added twice. New details (a place, a more precise date) are still added. 128 tests.

@@ -9,3 +9,8 @@ trees/
 # Windows system files
 desktop.ini
 Thumbs.db
+
+# Interface: installed packages and build output are recreated with npm install / npm run build
+node_modules/
+dist/
+*.tsbuildinfo
