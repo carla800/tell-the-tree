@@ -7,6 +7,8 @@ Two formats:
     backend/words.py turns the first into the second.
 """
 
+import re
+
 MODEL_OP_TYPES = ("person", "relation", "event")
 OP_TYPES = ("person", "union", "child", "siblings", "event", "relation_hint")
 EVENT_TYPES = ("birth", "death", "marriage", "divorce", "residence", "occupation", "other")
@@ -29,6 +31,15 @@ REQUIRED = {
 LOWERCASE_FIELDS = ("op", "type", "relation", "kind")
 
 
+# Small models sometimes fill a field they should leave out: "place": "not specified".
+# Those words mean "no value", so the field is dropped.
+PLACEHOLDER_FIELDS = ("date", "place", "description")
+PLACEHOLDERS = re.compile(
+    r"^(not (specified|given|mentioned|known|stated)|unspecified|unknown|n/?a|none|null|-+|\?+"
+    r"|non (specificat[oa]|indicat[oa]|not[oa])|sconosciut[oa]|nessun[oa]?)$"
+)
+
+
 def _clean(raw: dict) -> dict:
     op = {}
     for key, value in raw.items():
@@ -36,7 +47,7 @@ def _clean(raw: dict) -> dict:
             continue
         if isinstance(value, str):
             value = value.strip()
-            if not value:
+            if not value or (key in PLACEHOLDER_FIELDS and PLACEHOLDERS.match(value.lower().rstrip("."))):
                 continue
             if key in LOWERCASE_FIELDS:
                 value = value.lower()

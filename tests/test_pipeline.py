@@ -175,3 +175,14 @@ def test_api_warns_about_unknown_words(client):
 def test_bad_tree_name(client):
     assert client.get("/api/trees/../secret").status_code in (400, 404)
     assert client.post("/api/trees", json={"name": "Bad Name!"}).status_code == 400
+
+
+def test_placeholder_values_are_dropped():
+    """Real Gemma answer for "Percy Florence Shelley married Jane St John in 1848": place "not specified"."""
+    raw = [{"op": "event", "partners": ["Percy Florence Shelley", "Jane St John"], "type": "marriage",
+            "date": "1848", "place": "not specified"},
+           {"op": "event", "person": "Roberta", "type": "birth", "date": "Sconosciuta", "place": "Padova"}]
+    ops = llm.interpret(raw)["ops"]
+    events = [o for o in ops if o["op"] == "event"]
+    assert "place" not in events[0] and events[0]["date"] == "1848"
+    assert "date" not in events[1] and events[1]["place"] == "Padova"

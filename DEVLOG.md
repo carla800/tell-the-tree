@@ -122,3 +122,5 @@ React + TypeScript, React Flow for the tree, dagre for the layout. Nothing leave
 I tested it with a fake Gemma that gives the ideal answers, so the screenshots check the interface, not the model.
 
 **A bug the interface found.** "Percy married Mary on 30 December 1816" wanted to add the wedding again: the demo data has it as 1816-12-30, and the app compared the text. Now dates are read as day, month and year (English or Italian months), and an event the tree already has, written differently or with less detail, is listed under "already knows" instead of being added twice. New details (a place, a more precise date) are still added. 128 tests.
+
+**First real sentence in the interface.** "Percy Florence Shelley married Jane St John in 1848" with the real Gemma (22.6 s, the first sentence loads the model): the right preview, but the wedding came with the place "not specified". The sentence has no place, and instead of leaving the field out Gemma filled it in. Now words like "not specified", "unknown", "non specificato" or "sconosciuto" in a date, place or description mean "no value" and the field is dropped. 129 tests.
