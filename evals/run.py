@@ -5,7 +5,7 @@
     python -m evals.run --model gemma4:e4b
 
 For each sentence:
-  - model: did Gemma produce the expected operations?
+  - model: did Gemma (plus the word dictionary) produce the expected tree operations?
   - code:  with Gemma's operations, did the app save / ask / reject as expected?
 Every run is saved in evals/runs/ with Gemma's raw answers, so results can be compared later.
 """
@@ -71,13 +71,17 @@ def main():
                 print(f"       extra:   {e}")
             for p in result["problems"]:
                 print(f"       unusable: {p}")
+            if not score["ok"]:
+                for op in result["model_ops"]:
+                    print(f"       gemma:   {op}")
             if not code_pass:
-                print(f"       code expected {expected_code}; errors {plan.errors}; asked {[q['name'] for q in plan.questions]}")
+                asked = [q.get("name") or q.get("word") for q in plan.questions]
+                print(f"       code expected {expected_code}; errors {plan.errors}; asked {asked}")
 
             log.write(json.dumps({
                 "id": case["id"], "sentence": case["sentence"], "model": args.model,
                 "prompt": llm.PROMPT_VERSION, "seconds": result["seconds"],
-                "raw": result["raw"], "ops": result["ops"], "problems": result["problems"],
+                "raw": result["raw"], "model_ops": result["model_ops"], "ops": result["ops"], "problems": result["problems"],
                 "model_ok": score["ok"], "missing": score["missing"], "extra": score["extra"],
                 "code_status": plan.status, "code_expected": expected_code, "code_ok": code_pass,
                 "errors": plan.errors, "questions": plan.questions,

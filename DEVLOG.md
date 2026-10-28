@@ -65,3 +65,24 @@ A design lesson: when part of Gemma's answer was unusable, the app said nothing.
 - One schema per operation, with the fields it can't work without marked as required: an event without a type, or a relation_hint without a kind, can no longer be written. Two new tests check that the schema accepts every correct answer and refuses the mistakes of run 1.
 - The prompt now says which operation to use for which word (mother -> child, half-sister -> siblings, grandson -> relation_hint), and that relation_hint is never for parents, children, siblings or couples.
 - Two new few-shot examples: a couple who never married, and a half-brother "on the father's side" with a marriage date. Still no test sentence among the examples.
+
+## Run 2 - prompt p2
+
+**Model 8/15 (from 4), code 14/15.** Events without a type disappeared completely.
+
+What was still wrong:
+- `relation_hint` was still a magnet: "stepsister" came back as niece, "mother" as aunt (d05, d11). The code still rejected d11, because the tree says Ada is Byron's daughter.
+- Small inventions: "a few days after giving birth" became Mary Wollstonecraft's own *birth* (d03), and "Villa Diodati" became a person (d10).
+- Lost pieces in long sentences: the date of Byron's wedding (d06), "who never married" (d07).
+
+**The real problem: we were asking a small model to classify family relations, which is exactly what it does worst.** It's the same lesson other builders wrote about this month: let the model copy, let the code decide.
+
+## Redesign - prompt p3: Gemma copies, the code decides
+
+- Gemma now has three operations instead of six. For any family relation it writes `relation` and **copies the word as written**: "half-sister on her mother's side", "figlio adottivo", "sposò". (`docs/operations.md`)
+- `backend/words.py`: an English and Italian dictionary decides what the word means. The order of the checks matters: "grandson" before "son", "stepmother" and "mother-in-law" before "mother", "never married" before "married", and "on her mother's side" is removed before looking for "mother". 61 tests cover it.
+- **"Nipote."** In Italian it means both grandchild and niece/nephew; "fratellastro" and "sorellastra" can mean a half- or a step-sibling. The code doesn't guess: if the tree already explains one meaning ("Percy Florence è il nipote di William Godwin": the tree shows he's his grandson), it uses it; otherwise it asks. My parents would say "nipote" all the time, so this matters for the real use of the app.
+- The word also gives the sex when it says it ("moglie" -> F, "grandson" -> M), but not verbs like "sposò".
+- An unknown word ("madrina") becomes a warning in the preview, never a silent drop.
+- New test file `tests/model_answers.yaml`: the ideal Gemma answer for each dev sentence, written from the sentences alone. With those answers the whole pipeline gets 15/15, so from now on any failure in the evals is Gemma's, not the dictionary's.
+- 125 tests in total.

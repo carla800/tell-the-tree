@@ -3,7 +3,8 @@
     uvicorn backend.api:app --reload
 
 Flow: /parse (Gemma reads the sentence) -> the user answers any questions -> /plan (re-check with the answers)
--> the user confirms -> /apply (saved). Gemma is called only once per sentence.
+-> the user confirms -> /apply (saved). Gemma is called only once per sentence: the client sends Gemma's
+operations (`model_ops`) back to /plan and /apply, and the server interprets them again each time.
 """
 
 import re
@@ -17,7 +18,6 @@ from pydantic import BaseModel
 
 from . import llm
 from .db import connect
-from .ops import normalize_ops
 from .planner import apply_plan, make_plan
 from .tree import load_tree
 
@@ -42,8 +42,8 @@ class ParseRequest(BaseModel):
 
 
 class PlanRequest(BaseModel):
-    ops: list[dict]
-    choices: dict[str, int | str] = {}
+    model_ops: list[dict]
+    choices: dict[str, int | str] = {}   # "Mary" -> person id or "new"; "meaning:nipote" -> chosen label
 
 
 class ApplyRequest(PlanRequest):
@@ -113,33 +113,33 @@ def parse(name: str, req: ParseRequest):
     with closing(_open(name)) as conn:
         tree = load_tree(conn)
     result = llm.parse_sentence(req.sentence)
-    plan = make_plan(tree, result["ops"])
-    if result["problems"]:
-        # never stay silent: part of the sentence did not become tree facts
-        plan.warnings.append("Part of this sentence couldn't be turned into tree facts. Try rephrasing it.")
-    return {"ops": result["ops"], "problems": result["problems"], "seconds": result["seconds"], "plan": _plan_json(plan)}
+    return {"model_ops": result["model_ops"], "seconds": result["seconds"],
+            "plan": _plan_json(_make(tree, result))}
 
 
 @app.post("/api/trees/{name}/plan")
 def replan(name: str, req: PlanRequest):
     with closing(_open(name)) as conn:
         tree = load_tree(conn)
-    ops, _ = normalize_ops(req.ops)
-    return {"plan": _plan_json(make_plan(tree, ops, req.choices))}
+    return {"plan": _plan_json(_make(tree, llm.interpret(req.model_ops), req.choices))}
 
 
 @app.post("/api/trees/{name}/apply")
 def apply(name: str, req: ApplyRequest):
-    conn = _open(name)
-    try:
-        ops, _ = normalize_ops(req.ops)
-        plan = make_plan(load_tree(conn), ops, req.choices)
+    with closing(_open(name)) as conn:
+        plan = _make(load_tree(conn), llm.interpret(req.model_ops), req.choices)
         if plan.status != "save":
             raise HTTPException(409, {"message": "The sentence needs answers or has errors.", "plan": _plan_json(plan)})
         apply_plan(conn, plan, req.sentence)
         return {"saved": plan.summary, "tree": _tree_json(conn)}
-    finally:
-        conn.close()
+
+
+def _make(tree, interpreted: dict, choices: dict | None = None):
+    plan = make_plan(tree, interpreted["ops"], choices)
+    for problem in interpreted["problems"]:
+        # never stay silent: say which part of the sentence did not become tree facts
+        plan.warnings.append(problem if problem.startswith("I don't know") else "Part of this sentence couldn't be turned into tree facts.")
+    return plan
 
 
 @app.get("/api/health")

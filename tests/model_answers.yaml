@@ -1,0 +1,41 @@
+# The ideal answer Gemma should give for each dev sentence, in Gemma's format.
+# Written from the sentences only (not from any model output). Used to test that
+# the word dictionary turns a perfect answer into the expected tree operations,
+# and as a fake Gemma in the pipeline tests.
+
+d01:
+  - { op: relation, person: Mary Shelley, word: daughter, of: [William Godwin, Mary Wollstonecraft] }
+d02:
+  - { op: relation, person: William Godwin, word: married, of: [Mary Wollstonecraft] }
+  - { op: event, partners: [William Godwin, Mary Wollstonecraft], type: marriage, date: March 1797, place: St Pancras Church }
+d03:
+  - { op: event, person: Mary Wollstonecraft, type: death, date: September 1797, place: London, description: a few days after giving birth }
+d04:
+  - { op: relation, person: Fanny Imlay, word: "half-sister on her mother's side", of: [Mary Shelley] }
+d05:
+  - { op: relation, person: Claire Clairmont, word: stepsister, of: [Mary Shelley] }
+d06:
+  - { op: relation, person: Byron, word: married, of: [Annabella Milbanke] }
+  - { op: event, partners: [Byron, Annabella Milbanke], type: marriage, date: 2 January 1815 }
+  - { op: relation, person: Ada, word: only child, of: [Byron, Annabella Milbanke] }
+  - { op: event, person: Ada, type: birth, date: 10 December 1815, place: London }
+d07:
+  - { op: relation, person: Allegra, word: daughter, of: [Lord Byron, Claire Clairmont] }
+  - { op: relation, person: Lord Byron, word: never married, of: [Claire Clairmont] }
+d08:
+  - { op: relation, person: Percy, word: married, of: [Mary] }
+  - { op: event, partners: [Percy, Mary], type: marriage, date: 30 December 1816 }
+d09:
+  - { op: relation, person: Percy Florence Shelley, word: grandson, of: [William Godwin] }
+d10: []
+d11:
+  - { op: relation, person: Ada Lovelace, word: mother, of: [Lord Byron] }
+d12:
+  - { op: relation, person: Maria Rossi, word: moglie, of: [Marco Rossi] }
+d13:
+  - { op: relation, person: Marco, word: fratelli, of: [Roberta] }
+d14:
+  - { op: event, person: Roberta, type: birth, date: "1960", place: Padova }
+  - { op: event, person: Roberta, type: residence, place: Parigi, description: si è trasferita a Parigi }
+d15:
+  - { op: relation, person: Giuseppe, word: figlio adottivo, of: [Maria, Marco] }

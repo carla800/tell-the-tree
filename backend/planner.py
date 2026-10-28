@@ -65,6 +65,7 @@ class Planner:
             if key not in self._asked:
                 self._asked.add(key)
                 self.plan.questions.append({
+                    "kind": "person",
                     "name": name,
                     "candidates": [{"id": p.id, "name": p.name, "born": self.tree.year(p.id, "birth")} for p in candidates],
                 })
@@ -346,10 +347,52 @@ class Planner:
         else:
             self._claim(a, b, kind)
 
-    def run(self, ops: list[dict]) -> Plan:
+    def op_ambiguous(self, op):
+        """A word with more than one meaning ("nipote", "sorellastra").
+
+        1. The user already chose a meaning: use it.
+        2. The tree already explains exactly one meaning: use it, nothing to ask.
+        3. Otherwise: ask.
+        """
+        options = op["options"]
+        chosen = self.choices.get(f"meaning:{op['word']}".casefold())
+        if chosen is not None:
+            match = [o for o in options if o["label"] == chosen]
+            if match:
+                self._run_ops(match[0]["ops"])
+                return
+        names = [op["person"], *op["of"]]
+        before = len(self.plan.questions)
+        ids = [self.resolve(n) for n in names]
+        if None in ids:
+            return
+        already_true = []
+        for option in options:
+            trial = Planner(self.tree, self.choices)
+            trial._next_tmp = self._next_tmp
+            trial._run_ops(option["ops"])
+            if not trial.plan.errors and not trial.plan.changes:
+                already_true.append(option)
+        if len(already_true) == 1:
+            self._run_ops(already_true[0]["ops"])
+            self.plan.known.append(f'"{op["word"]}" read as {already_true[0]["label"]}, as the tree already shows')
+            return
+        if len(self.plan.questions) == before:
+            self.plan.questions.append({
+                "kind": "meaning",
+                "word": op["word"],
+                "person": op["person"],
+                "of": op["of"],
+                "options": [o["label"] for o in options],
+            })
+
+    def _run_ops(self, ops: list[dict]):
         # people first, so that sex and birth names are known before the checks
         for op in sorted(ops, key=lambda o: o["op"] != "person"):
             getattr(self, f"op_{op['op']}")(op)
+
+    def run(self, ops: list[dict]) -> Plan:
+        self._run_ops(ops)
         if self.plan.errors:
             self.plan.status = "reject"
         elif self.plan.questions:
