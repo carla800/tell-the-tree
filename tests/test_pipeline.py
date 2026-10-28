@@ -41,6 +41,26 @@ def test_prompt_examples_are_not_test_sentences():
     assert not examples & set(CASES)
 
 
+def test_schema_allows_every_correct_answer():
+    """The schema forces Gemma's shape. It must never forbid a right answer."""
+    jsonschema = pytest.importorskip("jsonschema")
+    answers = [answer for _, answer in llm.EXAMPLES] + [{"ops": c["expected_ops"]} for c in CASES.values()]
+    for answer in answers:
+        jsonschema.validate(answer, llm.SCHEMA)
+
+
+def test_schema_refuses_the_mistakes_of_the_first_run():
+    jsonschema = pytest.importorskip("jsonschema")
+    mistakes = [
+        {"op": "event", "person": "Roberta", "date": "1960", "place": "Padova"},   # no type
+        {"op": "relation_hint", "a": "Ada Lovelace", "b": "Lord Byron"},          # no kind
+        {"op": "union", "partners": ["Marco"], "type": "marriage"},               # one partner
+    ]
+    for op in mistakes:
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate({"ops": [op]}, llm.SCHEMA)
+
+
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setattr(api, "TREES", tmp_path)

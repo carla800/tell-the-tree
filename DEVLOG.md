@@ -44,3 +44,24 @@ Moved the backend up from Thursday, in case I can't work tomorrow.
 - `backend/api.py`: parse -> answer questions -> plan -> apply. Gemma is called once per sentence.
 - `evals/run.py`: runs Gemma on the test sentences and scores the two halves separately: did Gemma produce the right operations, and did the app then save / ask / reject correctly. Every run is logged with Gemma's raw answers in `evals/runs/`.
 - 28 tests on the code side, with a fake Gemma that always answers correctly, so a failure there is always our bug.
+
+## Run 1 - prompt p1, Gemma 4 E2B (dev set, 15 sentences)
+
+**Model 4/15, code 14/15**, 1.1 minutes in total (2-6 seconds per sentence after the first).
+
+The code side held up: "Percy married Mary" came back with the names as written, and the app asked which Percy and which Mary instead of guessing.
+
+Gemma's mistakes had two causes:
+1. **Events without a type.** Gemma wrote the date and the place but not whether it was a birth, a death or a move (d03, d10, d14). The code drops an event it can't classify.
+2. **`relation_hint` for everything.** Half-sister, stepsister, mother and grandson all came back as relation_hint, and without saying which relation (d04, d05, d09, d11). The worst one is d11: without a proper `child` operation, the app could not reject "Ada Lovelace was Lord Byron's mother".
+
+Both come from my schema: every field except `op` was optional, so Gemma could stop halfway through an operation.
+
+Smaller ones: "never married" became `unknown` instead of `partnership` (d07); "fratelli" became `full` instead of `unspecified` (d13). The second one is debatable in Italian, and the planner treats both the same when the parents are unknown; I'm keeping the test as written.
+
+A design lesson: when part of Gemma's answer was unusable, the app said nothing. Now the API adds a warning ("Part of this sentence couldn't be turned into tree facts") instead of staying silent.
+
+**Changes for p2**
+- One schema per operation, with the fields it can't work without marked as required: an event without a type, or a relation_hint without a kind, can no longer be written. Two new tests check that the schema accepts every correct answer and refuses the mistakes of run 1.
+- The prompt now says which operation to use for which word (mother -> child, half-sister -> siblings, grandson -> relation_hint), and that relation_hint is never for parents, children, siblings or couples.
+- Two new few-shot examples: a couple who never married, and a half-brother "on the father's side" with a marriage date. Still no test sentence among the examples.

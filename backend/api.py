@@ -114,6 +114,9 @@ def parse(name: str, req: ParseRequest):
         tree = load_tree(conn)
     result = llm.parse_sentence(req.sentence)
     plan = make_plan(tree, result["ops"])
+    if result["problems"]:
+        # never stay silent: part of the sentence did not become tree facts
+        plan.warnings.append("Part of this sentence couldn't be turned into tree facts. Try rephrasing it.")
     return {"ops": result["ops"], "problems": result["problems"], "seconds": result["seconds"], "plan": _plan_json(plan)}
 
 

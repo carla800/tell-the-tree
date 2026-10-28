@@ -42,6 +42,8 @@ def normalize_op(raw: dict) -> tuple[dict | None, str | None]:
             if not value:
                 continue
         op[key] = value
+    if op.get("shared_parent") == "unknown":
+        del op["shared_parent"]
     kind = op.get("op")
     if kind not in OP_TYPES:
         return None, f"unknown op: {raw!r}"
