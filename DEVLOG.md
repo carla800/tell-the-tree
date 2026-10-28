@@ -20,7 +20,11 @@ Deadline: 31 October 2026, 23:59 PDT (1 November, 07:59 in Italy).
 
 **Test set written before any model run:** 15 dev sentences in English and Italian, including traps: an ambiguous "Percy married Mary" (two of each in the tree), a sentence with no family facts, and an impossible one ("Ada Lovelace was Lord Byron's mother") that Gemma must translate faithfully and the code must reject. The holdout set is written by me without looking at any output, and will be run once after freezing the code. (`tests/sentences.yaml`)
 
-**Demo data:** 22 people and 9 families from Villa Diodati, each with a source, to be verified one by one. Sources already disagree in places: Allegra Byron died on 19 or 20 April 1822 depending on the source. (`data/villa-diodati.yaml`)
+**Demo data:** 22 people and 9 families from Villa Diodati, each with a source (mostly Wikipedia). Sources already disagree in places: Allegra Byron died on 19 or 20 April 1822 depending on the source. (`data/villa-diodati.yaml`)
+
+**First bug, before any code.** In the first version of the demo data, places with a comma inside `{ }` (like `place: Gulf of La Spezia, Italy`) were silently split in two: in YAML's inline style a comma separates fields, so "Italy" became a field of its own. My editor reformatted the file on save and the stray "Italy" showed up on its own line. Fixed by switching to block style, quoting all dates, and checking every field name when the file is loaded.
+
+**New requirement: "probably".** Wikipedia says Gilbert Imlay was *probably* born in Upper Freehold and that the death record on Jersey *may* be his. Genealogy is full of uncertain facts, and the old site had no way to say so. The app must keep "probably", "about" and "maybe" instead of turning them into certainties.
 
 **Plan**
 - Wed evening: verify the demo data, write the holdout sentences, set up the repo.
