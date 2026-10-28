@@ -124,3 +124,21 @@ I tested it with a fake Gemma that gives the ideal answers, so the screenshots c
 **A bug the interface found.** "Percy married Mary on 30 December 1816" wanted to add the wedding again: the demo data has it as 1816-12-30, and the app compared the text. Now dates are read as day, month and year (English or Italian months), and an event the tree already has, written differently or with less detail, is listed under "already knows" instead of being added twice. New details (a place, a more precise date) are still added. 128 tests.
 
 **First real sentence in the interface.** "Percy Florence Shelley married Jane St John in 1848" with the real Gemma (22.6 s, the first sentence loads the model): the right preview, but the wedding came with the place "not specified". The sentence has no place, and instead of leaving the field out Gemma filled it in. Now words like "not specified", "unknown", "non specificato" or "sconosciuto" in a date, place or description mean "no value" and the field is dropped. 129 tests.
+
+## Run 5 - a bigger Gemma: E4B against E2B
+
+Same 15 sentences, same prompt p3, but with `gemma4:e4b-it-qat` (a 6 GB download).
+
+| | E2B (run 4) | E4B (run 5) |
+|---|---|---|
+| Model | 14/15 | 12/15 (13/15 with the fix below) |
+| Code | 15/15 | 15/15 |
+| Time for 15 sentences | 0.8 min | 2.0 min |
+| First sentence (loading) | ~19 s | 36 s |
+
+- **E4B gets d06 right**, the long sentence that E2B never managed: the wedding, Ada as the child of both, and her birth.
+- **d03: E4B makes the mistake E2B made in run 2.** "A few days after giving birth" becomes Mary Wollstonecraft's own birth. The code can't know that's wrong, so it would show it in the preview: this is exactly why nothing is saved before a person has seen it.
+- **d10:** E4B read it as Byron living at Villa Diodati (the reading I already accept), but copied the place as "Villa Diodati near Lake Geneva". A fair copy; the scoring compares places exactly, so it counts as wrong. I'm leaving the scoring as it is.
+- **d13 was not a model mistake.** E4B said it both ways, "Marco is Roberta's brother" and "Roberta is Marco's sister": the same fact twice. Now the code counts a fact said both ways once (it also keeps the sexes: Marco M, Roberta F). Replayed with this fix, E4B's d13 is right. 130 tests.
+
+**Decision: E2B stays the default.** It's smaller, two and a half times faster, and on these sentences it makes fewer mistakes. E4B is better only on long sentences, and the interface already says one fact per sentence works best. Anyone can switch with the `FAMILY_TREE_MODEL` setting.

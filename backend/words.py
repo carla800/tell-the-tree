@@ -167,7 +167,7 @@ def to_tree_ops(model_ops: list[dict]) -> tuple[list[dict], list[str]]:
             problems.append(f'"{word}" needs exactly one partner ({person} / {", ".join(others)}).')
             continue
         ops += meaning_to_ops(meaning, person, others)
-    return _merge_parents(_add_implied_unions(ops)), problems
+    return _drop_repeats(_merge_parents(_add_implied_unions(ops))), problems
 
 
 def _add_implied_unions(ops: list[dict]) -> list[dict]:
@@ -181,6 +181,25 @@ def _add_implied_unions(ops: list[dict]) -> list[dict]:
                 couples.add(key)
                 result.append({"op": "union", "partners": list(op["partners"]), "type": "marriage"})
         result.append(op)
+    return result
+
+
+def _same_fact(op: dict):
+    """The same fact said both ways ('Marco is Roberta's brother' + 'Roberta is Marco's sister') gives the same key."""
+    if op["op"] == "siblings":
+        return ("siblings", frozenset(n.casefold() for n in op["people"]), op.get("kind"), op.get("shared_parent"))
+    if op["op"] == "union":
+        return ("union", frozenset(n.casefold() for n in op["partners"]), op.get("type"))
+    return repr(sorted(op.items()))
+
+
+def _drop_repeats(ops: list[dict]) -> list[dict]:
+    seen, result = set(), []
+    for op in ops:
+        key = _same_fact(op)
+        if key not in seen:
+            seen.add(key)
+            result.append(op)
     return result
 
 

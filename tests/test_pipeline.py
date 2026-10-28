@@ -186,3 +186,12 @@ def test_placeholder_values_are_dropped():
     events = [o for o in ops if o["op"] == "event"]
     assert "place" not in events[0] and events[0]["date"] == "1848"
     assert "date" not in events[1] and events[1]["place"] == "Padova"
+
+
+def test_a_fact_said_both_ways_counts_once():
+    """Real Gemma 4 E4B answer for d13 "Marco e Roberta sono fratelli."."""
+    raw = [{"op": "relation", "person": "Marco", "word": "fratello", "of": ["Roberta"]},
+           {"op": "relation", "person": "Roberta", "word": "sorella", "of": ["Marco"]}]
+    ops = llm.interpret(raw)["ops"]
+    assert [o["op"] for o in ops].count("siblings") == 1
+    assert {(o["name"], o["sex"]) for o in ops if o["op"] == "person"} == {("Marco", "M"), ("Roberta", "F")}
