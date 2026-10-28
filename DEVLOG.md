@@ -31,3 +31,16 @@ Deadline: 31 October 2026, 23:59 PDT (1 November, 07:59 in Italy).
 - Thu evening: backend (database, Gemma, checks), first run on the dev set.
 - Fri evening: interface with the tree.
 - Sat: gothic theme for the Diodati tree, GEDCOM export, README, demo GIF, post.
+
+Holdout sentences written and committed (`tests/holdout.txt`) before any model output existed.
+
+## Day 0, afternoon - the engine
+
+Moved the backend up from Thursday, in case I can't work tomorrow.
+
+- `backend/tree.py`: the tree in memory and the derived relationships. All 8 tricky Villa Diodati relations come out right, including Allegra being Mary Shelley's step-niece.
+- `backend/planner.py`: turns operations into a preview. It resolves names (and asks when "Mary" could be three people), rejects impossible facts with a reason a person can read ("Lord Byron is already an ancestor of Ada Lovelace"), and saves only after confirmation. Every saved fact keeps the sentence it came from.
+- `backend/llm.py`: the prompt (version p1) and a JSON schema for Gemma's answer. Lessons from Week 3 applied from the start: temperature 0, thinking off, a hard cap on the answer length, and few-shot examples that are not test sentences (a test checks this).
+- `backend/api.py`: parse -> answer questions -> plan -> apply. Gemma is called once per sentence.
+- `evals/run.py`: runs Gemma on the test sentences and scores the two halves separately: did Gemma produce the right operations, and did the app then save / ask / reject correctly. Every run is logged with Gemma's raw answers in `evals/runs/`.
+- 28 tests on the code side, with a fake Gemma that always answers correctly, so a failure there is always our bug.

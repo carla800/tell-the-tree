@@ -9,12 +9,12 @@ The model follows the same idea as GEDCOM, the standard genealogy format: people
 ```sql
 -- A person in the tree
 CREATE TABLE person (
-    id          INTEGER PRIMARY KEY,
-    given_name  TEXT NOT NULL,          -- "Mary"
-    surname     TEXT,                   -- "Shelley" (current or best-known surname)
-    birth_name  TEXT,                   -- "Mary Wollstonecraft Godwin" (optional)
-    sex         TEXT CHECK (sex IN ('F', 'M', 'U')) DEFAULT 'U',
-    notes       TEXT
+    id            INTEGER PRIMARY KEY,
+    name          TEXT NOT NULL,        -- "Mary Shelley", as people call them
+    birth_name    TEXT,                 -- "Mary Wollstonecraft Godwin" (optional)
+    also_known_as TEXT,                 -- other names, comma-separated
+    sex           TEXT CHECK (sex IN ('F', 'M', 'U')) DEFAULT 'U',
+    notes         TEXT
 );
 
 -- A family: a union of up to two partners (either can be unknown)
@@ -44,9 +44,21 @@ CREATE TABLE event (
     date_sort   TEXT,               -- normalised by code for sorting and checks: "1797-08-30"
     place       TEXT,
     description TEXT,               -- free text: "moved to Paris after the war"
-    source      TEXT                -- where the information comes from
+    source      TEXT                -- where the information comes from: the sentence it was told in
+);
+
+-- A relationship we were told about but can't place in the tree yet,
+-- e.g. "Claire was Mary's stepsister" while their parents are unknown
+CREATE TABLE claim (
+    id       INTEGER PRIMARY KEY,
+    a_id     INTEGER NOT NULL REFERENCES person(id),
+    b_id     INTEGER NOT NULL REFERENCES person(id),
+    kind     TEXT NOT NULL,         -- step_sibling, half_sibling, grandchild...
+    sentence TEXT
 );
 ```
+
+Dates are stored as written ("about 1815", "nel 1960", "probably 1890"): the code extracts the year only when it needs to compare dates.
 
 ## How sentences map to the model
 
@@ -55,7 +67,7 @@ CREATE TABLE event (
 | "Maria is Marco's wife" | a `family` with Maria and Marco as partners, `union_type = marriage` |
 | "Giuseppe is their son" | `family_child(that family, Giuseppe, birth)` |
 | "Marco is Roberta's brother" (parents unknown) | a `family` with **both partners unknown**, Marco and Roberta as its children. When the parents are added later, the code fills in that family instead of creating a new one |
-| "Claire is Mary's stepsister" | Mary and Claire are children of **different** families whose parents later married each other. Step-siblings are derived, never stored |
+| "Claire is Mary's stepsister" | Mary and Claire are children of **different** families whose parents later married each other. Step-siblings are derived, never stored. If their parents aren't in the tree yet, the statement is kept as a `claim` |
 | "Fanny is Mary's half-sister" | the two families share one parent (Mary Wollstonecraft) |
 | "Roberta lived in Padova, then moved to Paris" | two `event` rows of type `residence` |
 

@@ -1,0 +1,11 @@
+# Virtual environment and Python caches
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Tree files are personal data: never on GitHub (the demo tree is rebuilt from data/villa-diodati.yaml)
+trees/
+
+# Windows system files
+desktop.ini
+Thumbs.db

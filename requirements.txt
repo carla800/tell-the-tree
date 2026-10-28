@@ -1,0 +1,6 @@
+ollama
+pyyaml
+fastapi
+uvicorn
+pytest
+httpx
