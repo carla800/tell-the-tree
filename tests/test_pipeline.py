@@ -62,7 +62,7 @@ def test_nipote_is_asked_when_the_tree_cant_tell():
     question = plan.questions[0]
     assert question["kind"] == "meaning" and question["word"] == "nipote" and len(question["options"]) == 2
     # once the user picks a meaning, it saves
-    plan = make_plan(Tree(), ops, choices={"meaning:nipote": question["options"][0]})
+    plan = make_plan(Tree(), ops, choices={"meaning:nipote": question["options"][0]["id"]})
     assert plan.status == "save"
 
 

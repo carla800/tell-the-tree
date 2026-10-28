@@ -142,3 +142,23 @@ Same 15 sentences, same prompt p3, but with `gemma4:e4b-it-qat` (a 6 GB download
 - **d13 was not a model mistake.** E4B said it both ways, "Marco is Roberta's brother" and "Roberta is Marco's sister": the same fact twice. Now the code counts a fact said both ways once (it also keeps the sexes: Marco M, Roberta F). Replayed with this fix, E4B's d13 is right. 130 tests.
 
 **Decision: E2B stays the default.** It's smaller, two and a half times faster, and on these sentences it makes fewer mistakes. E4B is better only on long sentences, and the interface already says one fact per sentence works best. Anyone can switch with the `FAMILY_TREE_MODEL` setting.
+
+## Italian and English, and a photo for each person
+
+**Two languages.** My parents should be able to use this in Italian. Gemma already read sentences in both languages; now the interface speaks both too, and you can switch at any time (it starts in the browser's language).
+- The interface's words are in `frontend/src/i18n.ts`.
+- The sentences the engine writes ("New person: …", "Which Percy do you mean?", the reasons for a rejection) are in `backend/messages.py`. The planner builds each one as a `Message`: an ordinary English string, so tests, evals and logs read it as before, which also remembers its key and values, so the API can say it again in Italian.
+- Italian needs care where English doesn't: "nipote" is shown as "nipote (di nonno)" or "nipote (di zio)", and a birth name on a card is "nata Westbrook" or "nato Gordon Byron", depending on the person's sex.
+- The answer to "what does nipote mean here?" is now an id (`grandchild`, `niece_nephew`), not the English label, so it works in any language.
+- Adding a language means one more block in each of the two files. A test checks that every message has the same blanks in every language.
+
+**Photos.** Click a person, then "Add a photo".
+- The photo is stored **inside the tree's file**, not in a folder next to it: the whole tree, pictures included, stays one file you can copy or back up. After losing my old genealogy site, that matters more to me than anything else here.
+- The browser makes the picture small before sending it (at most 640 px, JPEG): a 5 MB phone photo becomes about 100 KB.
+- The server checks the file's first bytes, not what the browser says, and accepts only JPEG, PNG and WebP up to 3 MB.
+- On the tree, the photo is a small oval miniature at Villa Diodati and a pasted print in the register.
+- The demo tree has no pictures: you can add your own.
+
+**A bug found while testing.** Switching from a tree with photos to another one asked the server for a photo that didn't exist (404): for an instant, the old tree was drawn under the new tree's name. Now a tree's data always travels with its name.
+
+136 tests.

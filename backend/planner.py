@@ -10,6 +10,7 @@ import copy
 import re
 from dataclasses import dataclass, field
 
+from .messages import Message as M, Term
 from .ops import EVENT_TYPES
 from .tree import PARENT_LINKS, Claim, Event, Family, Person, Tree, date_parts, year_of
 
@@ -76,7 +77,7 @@ class Planner:
         pid = self._tmp_id()
         self.tree.people[pid] = Person(pid, name)
         self.plan.changes.append({"action": "add_person", "tmp": pid, "name": name, "sex": "U"})
-        self.plan.summary.append(f"New person: {name}")
+        self.plan.summary.append(M("new_person", name=name))
         return pid
 
     def _set_person(self, pid: int, **fields):
@@ -112,14 +113,13 @@ class Planner:
         fam = self._find_union(a, b)
         if fam is None:
             fam = self._new_family([a, b], union_type)
-            label = {"marriage": "married", "partnership": "partners"}.get(union_type, "a couple")
-            self.plan.summary.append(f"{self.name(a)} and {self.name(b)}: {label}")
+            self.plan.summary.append(M(f"union_{union_type}", a=self.name(a), b=self.name(b)))
         elif union_type != "unknown" and fam.union_type == "unknown":
             fam.union_type = union_type
             self.plan.changes.append({"action": "update_family", "id": fam.id, "fields": {"union_type": union_type}})
-            self.plan.summary.append(f"{self.name(a)} and {self.name(b)}: {union_type}")
+            self.plan.summary.append(M(f"union_{union_type}", a=self.name(a), b=self.name(b)))
         elif fam.id > 0:   # existed before this sentence
-            self.plan.known.append(f"{self.name(a)} and {self.name(b)} are already a couple")
+            self.plan.known.append(M("already_couple", a=self.name(a), b=self.name(b)))
         return fam
 
     # ---------- operations ----------
@@ -142,7 +142,7 @@ class Planner:
         if a is None or b is None:
             return
         if a == b:
-            self.plan.errors.append(f"{self.name(a)} can't be in a couple with themselves.")
+            self.plan.errors.append(M("err_self_couple", a=self.name(a)))
             return
         union_type = op.get("type") if op.get("type") in ("marriage", "partnership") else "unknown"
         self._union(a, b, union_type)
@@ -155,20 +155,17 @@ class Planner:
         relation = op.get("relation") if op.get("relation") in ("birth", "adopted", "step", "unknown") else "birth"
         for p in parents:
             if p == child:
-                self.plan.errors.append(f"{self.name(p)} can't be their own parent.")
+                self.plan.errors.append(M("err_own_parent", a=self.name(p)))
                 return
             if child in self.tree.ancestors(p) or child == p:
-                self.plan.errors.append(
-                    f"{self.name(child)} is already an ancestor of {self.name(p)}: "
-                    f"{self.name(p)} can't also be {self.name(child)}'s parent."
-                )
+                self.plan.errors.append(M("err_ancestor", child=self.name(child), parent=self.name(p)))
                 return
         if relation in PARENT_LINKS and not self._dates_ok_for_parents(child, parents):
             return
         if relation == "step":
             fam = self._family_for_parents(parents)
             self._add_child(fam, child, "step")
-            self.plan.summary.append(f"{self.name(child)}: stepchild of {' and '.join(self.name(p) for p in parents)}")
+            self.plan.summary.append(M("stepchild_of", child=self.name(child), parents=[self.name(p) for p in parents]))
             return
 
         wanted = set(parents)
@@ -177,7 +174,7 @@ class Planner:
             fam = existing[0]
             known = fam.known_partners()
             if wanted <= known:
-                self.plan.known.append(f"{self.name(child)}'s parents are already in the tree")
+                self.plan.known.append(M("parents_known", child=self.name(child)))
                 return
             free = [i for i, p in enumerate(fam.partners) if p is None]
             missing = list(wanted - known)
@@ -185,16 +182,16 @@ class Planner:
                 for slot, p in zip(free, missing):
                     fam.partners[slot] = p
                 self.plan.changes.append({"action": "update_family", "id": fam.id, "fields": {"partners": list(fam.partners)}})
-                self.plan.summary.append(f"{self.name(child)}: {' and '.join(self.name(p) for p in missing)} added as parent")
+                self.plan.summary.append(M("parent_added", child=self.name(child), parents=[self.name(p) for p in missing]))
                 return
-            names = " and ".join(self.name(p) for p in known) or "other parents"
-            self.plan.errors.append(f"{self.name(child)} already has {names} as parents in the tree.")
+            names = [self.name(p) for p in known] or Term("other_parents")
+            self.plan.errors.append(M("err_has_parents", child=self.name(child), names=names))
             return
 
         fam = self._family_for_parents(parents)
         self._add_child(fam, child, relation)
-        word = "adopted child" if relation == "adopted" else "child"
-        self.plan.summary.append(f"{self.name(child)}: {word} of {' and '.join(self.name(p) for p in parents)}")
+        key = "adopted_child_of" if relation == "adopted" else "child_of"
+        self.plan.summary.append(M(key, child=self.name(child), parents=[self.name(p) for p in parents]))
 
     def _family_for_parents(self, parents: list) -> Family:
         if len(parents) == 2:
@@ -211,17 +208,13 @@ class Planner:
         for p in parents:
             p_born = self.tree.year(p, "birth")
             if p_born is not None and p_born >= born:
-                self.plan.errors.append(
-                    f"{self.name(p)} (born {p_born}) can't be the parent of {self.name(child)} (born {born})."
-                )
+                self.plan.errors.append(M("err_parent_younger", parent=self.name(p), pb=p_born, child=self.name(child), cb=born))
                 return False
             if p_born is not None and born - p_born < 12:
-                self.plan.warnings.append(f"{self.name(p)} would have been {born - p_born} at {self.name(child)}'s birth.")
+                self.plan.warnings.append(M("warn_young_parent", parent=self.name(p), age=born - p_born, child=self.name(child)))
             p_died = self.tree.year(p, "death")
             if p_died is not None and p_died < born - 1:
-                self.plan.errors.append(
-                    f"{self.name(p)} died in {p_died}, before {self.name(child)} was born ({born})."
-                )
+                self.plan.errors.append(M("err_parent_dead", parent=self.name(p), pd=p_died, child=self.name(child), cb=born))
                 return False
         return True
 
@@ -235,13 +228,13 @@ class Planner:
             if other == first:
                 continue
             current = self.tree.sibling_kind(first, other)
-            pair = f"{self.name(first)} and {self.name(other)}"
+            pair = {"a": self.name(first), "b": self.name(other)}
             if current:
                 if kind in ("unspecified", current):
-                    self.plan.known.append(f"{pair} are already {current} siblings in the tree")
+                    self.plan.known.append(M("siblings_known", **pair, kind=Term(current)))
                     self._check_shared_parent(first, other, op.get("shared_parent"))
                 else:
-                    self.plan.errors.append(f"The tree says {pair} are {current} siblings, not {kind}.")
+                    self.plan.errors.append(M("err_sibling_kind", **pair, current=Term(current), kind=Term(kind)))
                 continue
             if kind in ("full", "unspecified"):
                 fa, fb = self.tree.birth_families(first), self.tree.birth_families(other)
@@ -256,7 +249,7 @@ class Planner:
                 else:
                     self._claim(first, other, f"{kind}_sibling")
                     continue
-                self.plan.summary.append(f"{pair}: siblings")
+                self.plan.summary.append(M("siblings_new", **pair))
             else:
                 self._claim(first, other, f"{kind}_sibling")
 
@@ -266,14 +259,12 @@ class Planner:
         sex = "F" if role == "mother" else "M"
         shared = self.tree.parents(a) & self.tree.parents(b)
         if shared and not any(self.tree.people[p].sex in (sex, "U") for p in shared):
-            self.plan.errors.append(f"{self.name(a)} and {self.name(b)} don't share a {role} in the tree.")
+            self.plan.errors.append(M(f"err_shared_{role}", a=self.name(a), b=self.name(b)))
 
     def _claim(self, a: int, b: int, kind: str):
         self.tree.claims.append(Claim(self._tmp_id(), a, b, kind))
         self.plan.changes.append({"action": "add_claim", "a": a, "b": b, "kind": kind})
-        self.plan.summary.append(
-            f"{self.name(a)} and {self.name(b)}: {kind.replace('_', ' ')} (saved as a note until their parents are in the tree)"
-        )
+        self.plan.summary.append(M("claim_note", a=self.name(a), kind=_kin(kind), b=self.name(b)))
 
     def op_event(self, op):
         etype = op["type"] if op["type"] in EVENT_TYPES else "other"
@@ -291,10 +282,11 @@ class Planner:
                 return
             fam = self._union(a, b, "marriage" if etype == "marriage" else "unknown")
             target = {"family": fam.id}
-            who = f"{self.name(a)} and {self.name(b)}"
+            who = [self.name(a), self.name(b)]
         details = ", ".join(x for x in (op.get("date"), op.get("place"), op.get("description")) if x)
+        said = {"who": who, "etype": Term(etype), "details": f" ({details})" if details else ""}
         if self._event_known(target, etype, op):
-            self.plan.known.append(f"{who}: {etype}" + (f" ({details})" if details else "") + " is already in the tree")
+            self.plan.known.append(M("event_known", **said))
             return
         event = {
             "action": "add_event", **target, "type": etype,
@@ -303,7 +295,7 @@ class Planner:
         self.tree.events.append(Event(self._tmp_id(), etype, target.get("person"), target.get("family"),
                                       op.get("date"), op.get("place"), op.get("description")))
         self.plan.changes.append(event)
-        self.plan.summary.append(f"{who}: {etype}" + (f" ({details})" if details else ""))
+        self.plan.summary.append(M("event", **said))
 
     def _event_known(self, target: dict, etype: str, op: dict) -> bool:
         """True when an event already in the tree says everything this one says
@@ -326,25 +318,25 @@ class Planner:
         born, died = self.tree.year(pid, "birth"), self.tree.year(pid, "death")
         if etype == "birth":
             if born is not None and born != year:
-                self.plan.errors.append(f"{name} is already recorded as born in {born}, not {year}.")
+                self.plan.errors.append(M("err_born_conflict", name=name, born=born, year=year))
                 return False
             if died is not None and year > died:
-                self.plan.errors.append(f"{name} died in {died}, so can't be born in {year}.")
+                self.plan.errors.append(M("err_born_after_death", name=name, died=died, year=year))
                 return False
             for c in self.tree.children(pid):
                 cb = self.tree.year(c, "birth")
                 if cb is not None and cb <= year:
-                    self.plan.errors.append(f"{name} can't be born in {year}: their child {self.name(c)} was born in {cb}.")
+                    self.plan.errors.append(M("err_born_after_child", name=name, year=year, child=self.name(c), cb=cb))
                     return False
         elif etype == "death":
             if died is not None and died != year:
-                self.plan.errors.append(f"{name} is already recorded as dead in {died}, not {year}.")
+                self.plan.errors.append(M("err_death_conflict", name=name, died=died, year=year))
                 return False
             if born is not None and year < born:
-                self.plan.errors.append(f"{name} was born in {born}, so can't die in {year}.")
+                self.plan.errors.append(M("err_death_before_birth", name=name, born=born, year=year))
                 return False
         elif born is not None and year < born:
-            self.plan.errors.append(f"{name} was born in {born}: nothing can happen to them in {year}.")
+            self.plan.errors.append(M("err_event_before_birth", name=name, born=born, year=year))
             return False
         return True
 
@@ -354,13 +346,10 @@ class Planner:
             return
         current = self.tree.relation(a, b)
         kind = op["kind"]
-        label = kind.replace("_", "/")
         if current and current[0] == kind:
-            self.plan.known.append(f"{self.name(a)} is already {self.name(b)}'s {label} in the tree")
+            self.plan.known.append(M("hint_known", a=self.name(a), b=self.name(b), kind=_kin(kind)))
         elif current:
-            self.plan.errors.append(
-                f"The tree says {self.name(a)} is {self.name(b)}'s {current[0].replace('_', '/')}, not {label}."
-            )
+            self.plan.errors.append(M("err_hint", a=self.name(a), b=self.name(b), current=_kin(current[0]), kind=_kin(kind)))
         else:
             self._claim(a, b, kind)
 
@@ -374,7 +363,7 @@ class Planner:
         options = op["options"]
         chosen = self.choices.get(f"meaning:{op['word']}".casefold())
         if chosen is not None:
-            match = [o for o in options if o["label"] == chosen]
+            match = [o for o in options if chosen in (o["id"], o["label"])]
             if match:
                 self._run_ops(match[0]["ops"])
                 return
@@ -392,7 +381,7 @@ class Planner:
                 already_true.append(option)
         if len(already_true) == 1:
             self._run_ops(already_true[0]["ops"])
-            self.plan.known.append(f'"{op["word"]}" read as {already_true[0]["label"]}, as the tree already shows')
+            self.plan.known.append(M("meaning_known", word=op["word"], label=Term(f"meaning_{already_true[0]['id']}")))
             return
         if len(self.plan.questions) == before:
             self.plan.questions.append({
@@ -400,7 +389,7 @@ class Planner:
                 "word": op["word"],
                 "person": op["person"],
                 "of": op["of"],
-                "options": [o["label"] for o in options],
+                "options": [{"id": o["id"], "label": o["label"]} for o in options],
             })
 
     def _run_ops(self, ops: list[dict]):
@@ -415,6 +404,11 @@ class Planner:
         elif self.plan.questions:
             self.plan.status = "ask"
         return self.plan
+
+
+def _kin(kind: str) -> Term:
+    """A relative's kind as a word ('other' is a relative here, not an event)."""
+    return Term("relative" if kind == "other" else kind)
 
 
 def _contains(known: str | None, new: str | None) -> bool:

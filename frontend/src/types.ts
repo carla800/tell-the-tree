@@ -21,6 +21,7 @@ export interface Person {
   born: number | null;
   died: number | null;
   events: TreeEvent[];
+  photo: string | null;      // when the photo last changed, or null when there is none
   pending?: boolean;
 }
 
@@ -65,7 +66,7 @@ export interface MeaningQuestion {
   word: string;
   person: string;
   of: string[];
-  options: string[];
+  options: { id: string; label: string }[];
 }
 
 export type Question = PersonQuestion | MeaningQuestion;

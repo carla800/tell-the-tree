@@ -19,7 +19,7 @@ export function withPreview(tree: TreeData, changes: Change[]): TreeData {
         const id = c.tmp as number;
         people.set(id, {
           id, name: c.name as string, birth_name: (c.birth_name as string) ?? null, also_known_as: null,
-          sex: (c.sex as Person["sex"]) ?? "U", notes: null, born: null, died: null, events: [], pending: true,
+          sex: (c.sex as Person["sex"]) ?? "U", notes: null, born: null, died: null, events: [], photo: null, pending: true,
         });
         break;
       }

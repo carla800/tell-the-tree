@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReactFlow, Background, Controls, useReactFlow, type Edge, type Node, type NodeChange, type NodeMouseHandler } from "@xyflow/react";
+import { photoUrl } from "./api";
+import { useI18n } from "./i18n";
 import { layoutTree } from "./layout";
 import { KnotNode, PersonNode } from "./nodes";
 import type { TreeData } from "./types";
@@ -21,6 +23,7 @@ const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)")
 
 interface Props {
   tree: TreeData;
+  treeName: string;
   selectedId: number | null;
   onSelect: (id: number | null) => void;
   fitKey: string;          // changes when the view should re-centre (new tree, new preview)
@@ -29,25 +32,30 @@ interface Props {
 const wide = () => window.matchMedia("(min-width: 821px)").matches;
 
 function Legend() {
+  const { t } = useI18n();
   return (
     <details className="legend" open={wide()}>
-      <summary>How to read the tree</summary>
+      <summary>{t.legendTitle}</summary>
       <div className="legend-keys">
-      <span><i className="key-line" /> child</span>
-      <span><i className="key-line key-step" /> stepchild</span>
-      <span><i className="key-line key-adopted" /> adopted</span>
-      <span><i className="key-knot" /> married</span>
-      <span><i className="key-knot key-partners" /> together, not married</span>
-      <span><i className="key-knot key-unknown" /> parents</span>
+        <span><i className="key-line" /> {t.keyChild}</span>
+        <span><i className="key-line key-step" /> {t.keyStepchild}</span>
+        <span><i className="key-line key-adopted" /> {t.keyAdopted}</span>
+        <span><i className="key-knot" /> {t.keyMarried}</span>
+        <span><i className="key-knot key-partners" /> {t.keyNotMarried}</span>
+        <span><i className="key-knot key-unknown" /> {t.keyParents}</span>
       </div>
     </details>
   );
 }
 
-export function TreeView({ tree, selectedId, onSelect, fitKey }: Props) {
+export function TreeView({ tree, treeName, selectedId, onSelect, fitKey }: Props) {
+  const { t } = useI18n();
   // Cards grow with long names, so the layout uses each card's real height once it has been drawn
   const [heights, setHeights] = useState<Record<string, number>>({});
-  const { nodes, edges } = useMemo(() => layoutTree(tree, selectedId, heights), [tree, selectedId, heights]);
+  const { nodes, edges } = useMemo(() => layoutTree(tree, {
+    selectedId, heights, claimLabels: t.claims,
+    photoUrl: (p) => (p.photo && p.id > 0 ? photoUrl(treeName, p.id, p.photo) : null),
+  }), [tree, treeName, selectedId, heights, t]);
   const flow = useReactFlow();
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
@@ -64,13 +72,13 @@ export function TreeView({ tree, selectedId, onSelect, fitKey }: Props) {
 
   // A new tree: show all of it. A preview: move to where the change would land.
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       const focus = previewArea(latest.current.nodes, latest.current.edges);
       const duration = reduceMotion() ? 0 : 450;
       if (focus.length) flow.fitView({ nodes: focus.map((id) => ({ id })), padding: { top: "48px", right: "48px", bottom: "84px", left: "48px" }, maxZoom: 1, duration });
       else flow.fitView({ padding: { top: "20px", right: "24px", bottom: "64px", left: "24px" }, maxZoom: 1, duration });
     }, 60);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [fitKey, measuredCount, flow]);
 
   const onNodeClick: NodeMouseHandler = (_, node) => {

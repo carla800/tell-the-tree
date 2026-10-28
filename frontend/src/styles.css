@@ -90,6 +90,7 @@ body {
 }
 
 .picker, .new-tree { display: flex; align-items: center; gap: 10px; }
+.lang { font-size: 0.9rem; padding: 4px 6px; }
 .picker label, .new-tree label { color: var(--text-soft); }
 
 select, input {
@@ -204,6 +205,18 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .detail h2 { margin: 0; font-family: "IM Fell English", Georgia, serif; font-weight: 400; font-size: 1.6rem; line-height: 1.15; }
 .detail-sub { margin: 4px 0 0; color: var(--text-soft); font-style: italic; }
 .detail-notes { margin: 10px 0 0; }
+
+.detail-photo { display: flex; gap: 16px; align-items: flex-start; margin-top: 14px; }
+.detail-photo img {
+  width: 104px;
+  height: 132px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+:root[data-theme="diodati"] .detail-photo img { border-radius: 50%; border: 2px solid var(--accent); }
+.detail-photo-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.detail-photo-note { margin: 0; color: var(--text-soft); font-size: 0.85rem; }
 .detail-empty { color: var(--text-soft); }
 
 .events { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -266,6 +279,21 @@ a.source { color: var(--text-soft); }
   outline-offset: -5px;
   box-shadow: 0 0 22px rgba(226, 169, 59, 0.12);
 }
+
+/* a photo sits at the left of the card: an oval miniature at the villa, a pasted print in the register */
+.person.has-photo { display: flex; gap: 10px; align-items: flex-start; }
+.person-text { min-width: 0; flex: 1; }
+.person-photo {
+  flex: none;
+  width: 42px;
+  height: 54px;
+  margin-top: 2px;
+  object-fit: cover;
+  border: 1px solid var(--card-border);
+  border-radius: 1px;
+  box-shadow: 1px 1px 0 var(--card-border);
+}
+:root[data-theme="diodati"] .person-photo { border-radius: 50%; border-color: var(--card-rule); box-shadow: 0 0 0 2px var(--card); }
 
 .person-name {
   font-family: "IM Fell English", Georgia, serif;

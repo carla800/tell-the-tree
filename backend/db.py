@@ -48,6 +48,14 @@ CREATE TABLE IF NOT EXISTS claim (
     kind     TEXT NOT NULL,
     sentence TEXT
 );
+
+-- One picture per person, inside the tree file: the whole tree stays one file you can copy
+CREATE TABLE IF NOT EXISTS photo (
+    person_id INTEGER PRIMARY KEY REFERENCES person(id) ON DELETE CASCADE,
+    mime      TEXT NOT NULL,
+    data      BLOB NOT NULL,
+    updated   TEXT NOT NULL
+);
 """
 
 

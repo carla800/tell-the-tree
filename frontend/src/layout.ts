@@ -6,37 +6,29 @@ export const PERSON_W = 184;
 export const PERSON_H = 74;
 const KNOT = 14;
 
-export type PersonNodeData = { person: Person; selected: boolean };
+export type PersonNodeData = { person: Person; selected: boolean; photoUrl: string | null };
 export type KnotNodeData = { unionType: string; pending: boolean };
 
-const CLAIM_LABEL: Record<string, string> = {
-  step_sibling: "step-sibling",
-  half_sibling: "half-sibling",
-  full_sibling: "sibling",
-  unspecified_sibling: "sibling",
-  grandchild: "grandchild",
-  grandparent: "grandparent",
-  niece_nephew: "niece or nephew",
-  aunt_uncle: "aunt or uncle",
-  cousin: "cousin",
-  in_law: "in-law",
-  other: "relative",
-};
+export interface LayoutOptions {
+  selectedId: number | null;
+  heights: Record<string, number>;         // measured card heights
+  claimLabels: Record<string, string>;     // "half_sibling" -> "half-sibling", in the interface's language
+  photoUrl: (p: Person) => string | null;
+}
+
+/** A first guess, used until the card has been drawn and measured. */
+function guessHeight(p: Person): number {
+  const nameLines = p.name.length > (p.photo ? 12 : 20) ? 2 : 1;
+  const birth = p.birth_name && p.birth_name !== p.name ? (p.birth_name.length > 21 ? 2 : 1) : 0;
+  return PERSON_H + (nameLines - 1) * 22 + birth * 16 - (birth ? 4 : 0);
+}
 
 /**
  * People are linked through small "knots": one knot per family.
  * Generations are columns, read left to right: partners point to their knot, the knot points to the children.
  */
-/** A first guess, used until the card has been drawn and measured. */
-function guessHeight(p: Person): number {
-  const nameLines = p.name.length > 20 ? 2 : 1;
-  const birth = p.birth_name && p.birth_name !== p.name ? (p.birth_name.length > 21 ? 2 : 1) : 0;
-  return PERSON_H + (nameLines - 1) * 22 + birth * 16 - (birth ? 4 : 0);
-}
-
-export function layoutTree(
-  tree: TreeData, selectedId: number | null, heights: Record<string, number> = {},
-): { nodes: Node[]; edges: Edge[] } {
+export function layoutTree(tree: TreeData, options: LayoutOptions): { nodes: Node[]; edges: Edge[] } {
+  const { selectedId, heights, claimLabels, photoUrl } = options;
   const g = new dagre.graphlib.Graph();
   g.setGraph({ rankdir: "LR", nodesep: 14, ranksep: 40, marginx: 24, marginy: 24 });
   g.setDefaultEdgeLabel(() => ({}));
@@ -75,7 +67,7 @@ export function layoutTree(
     const { x, y } = g.node(`p${p.id}`);
     nodes.push({
       id: `p${p.id}`, type: "person", position: { x: x - PERSON_W / 2, y: y - heightOf(p) / 2 },
-      data: { person: p, selected: p.id === selectedId } satisfies PersonNodeData,
+      data: { person: p, selected: p.id === selectedId, photoUrl: photoUrl(p) } satisfies PersonNodeData,
       draggable: false,
     });
   }
@@ -95,7 +87,7 @@ export function layoutTree(
     edges.push({
       id: `claim-${c.id}`, source: `p${c.a_id}`, target: `p${c.b_id}`, type: "straight",
       sourceHandle: "side", targetHandle: "side-in",
-      label: CLAIM_LABEL[c.kind] ?? c.kind.replace(/_/g, " "),
+      label: claimLabels[c.kind] ?? c.kind.replace(/_/g, " "),
       className: `edge claim${c.pending ? " pending" : ""}`,
     });
   }

@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
-import { api } from "./api";
+import { api, ApiError } from "./api";
 import { Bats } from "./Bats";
 import { PersonDetail } from "./PersonDetail";
 import { PlanView, questionKey } from "./PlanView";
 import { withPreview } from "./preview";
+import { I18n, LANGS, rememberLang, startingLang, STRINGS, type Lang, type Strings } from "./i18n";
 import { TreeView } from "./TreeView";
 import type { Choices, Plan, Question, TreeData } from "./types";
 
-// The project's name: change it here (and in index.html)
-const APP_NAME = "Family tree";
+// The project's name is in i18n.ts (appName) and index.html
 const DEMO_TREE = "villa-diodati";
 
 interface Pending {
@@ -25,6 +25,9 @@ const addQuestions = (asked: Question[], plan: Plan) =>
 
 const titleOf = (slug: string) => slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
+/** Messages are kept as "how to say it", so they follow the language when it changes. */
+type Say = (t: Strings) => string;
+
 const remembered = {
   get: () => { try { return localStorage.getItem("tree"); } catch { return null; } },
   set: (name: string) => { try { localStorage.setItem("tree", name); } catch { /* private window: fine */ } },
@@ -33,19 +36,29 @@ const remembered = {
 export default function App() {
   const [trees, setTrees] = useState<string[]>([]);
   const [current, setCurrent] = useState("");
-  const [tree, setTree] = useState<TreeData | null>(null);
+  // the tree's data travels with its name, so a tree is never drawn under another tree's name
+  const [loaded, setLoaded] = useState<{ name: string; data: TreeData } | null>(null);
+  const tree = loaded && loaded.name === current ? loaded.data : null;
   const [model, setModel] = useState<string | null>(null);
   const [sentence, setSentence] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
   const [choices, setChoices] = useState<Choices>({});
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<Say | null>(null);
+  const [notice, setNotice] = useState<Say | null>(null);
+  const [lang, setLang] = useState<Lang>(startingLang);
+  const t = STRINGS[lang];
+  const i18n = useMemo(() => ({ lang, t }), [lang, t]);
   const [selected, setSelected] = useState<number | null>(null);
   const [newName, setNewName] = useState<string | null>(null);
 
   const theme = current === DEMO_TREE ? "diodati" : "register";
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.title = t.appName;
+    rememberLang(lang);
+  }, [lang, t]);
 
   useEffect(() => {
     api.health().then((h) => setModel(h.model)).catch(() => setModel(null));
@@ -55,19 +68,19 @@ export default function App() {
         const last = remembered.get();
         setCurrent(last && names.includes(last) ? last : names.includes(DEMO_TREE) ? DEMO_TREE : names[0] ?? "");
       })
-      .catch(() => setError("Can't reach the app's server. Start it with: uvicorn backend.api:app --reload"));
+      .catch(() => setError(() => (t: Strings) => t.serverDown));
   }, []);
 
   useEffect(() => {
     if (!current) return;
     remembered.set(current);
-    setTree(null);
     setPending(null);
     setSelected(null);
     setNotice(null);
     setError(null);
     setSentence("");
-    api.getTree(current).then(setTree).catch((e: Error) => setError(e.message));
+    api.getTree(current).then((data) => setLoaded({ name: current, data }))
+      .catch((e: Error) => setError(() => () => e.message));
   }, [current]);
 
   const shown = useMemo(() => (tree && pending ? withPreview(tree, pending.plan.changes) : tree), [tree, pending]);
@@ -80,12 +93,13 @@ export default function App() {
     setError(null);
     setNotice(null);
     try {
-      const result = await api.parse(current, sentence.trim());
+      const result = await api.parse(current, sentence.trim(), lang);
       setChoices({});
       setPending({ sentence: sentence.trim(), modelOps: result.model_ops, plan: result.plan,
                    asked: addQuestions([], result.plan), seconds: result.seconds });
     } catch (e) {
-      setError(`Gemma couldn't read the sentence (${(e as Error).message}). Is Ollama running?`);
+      const why = (e as Error).message;
+      setError(() => (t: Strings) => t.gemmaFailed(why));
     } finally {
       setBusy(false);
     }
@@ -101,26 +115,44 @@ export default function App() {
     setChoices(next);
     setBusy(true);
     try {
-      const { plan } = await api.plan(current, pending.modelOps, next);
+      const { plan } = await api.plan(current, pending.modelOps, next, lang);
       setPending({ ...pending, plan, asked: addQuestions(pending.asked, plan) });
     } catch (e) {
-      setError((e as Error).message);
+      const why = (e as Error).message;
+      setError(() => () => why);
     } finally {
       setBusy(false);
     }
-  }, [choices, current, pending]);
+  }, [choices, current, pending, lang]);
+
+  // A new language while a sentence is waiting: ask for the same plan again, in that language
+  const changeLang = async (next: Lang) => {
+    setLang(next);
+    if (!pending) return;
+    try {
+      const { plan } = await api.plan(current, pending.modelOps, choices, next);
+      const asked = pending.asked.map((q) => plan.questions.find((n) => questionKey(n) === questionKey(q)) ?? q);
+      setPending({ ...pending, plan, asked: addQuestions(asked, plan) });
+    } catch { /* the old plan stays: still right, just in the other language */ }
+  };
+
+  const reloadTree = () => {
+    const name = current;
+    api.getTree(name).then((data) => setLoaded({ name, data })).catch(() => undefined);
+  };
 
   const confirm = async () => {
     if (!pending) return;
     setBusy(true);
     try {
-      const result = await api.apply(current, pending.sentence, pending.modelOps, choices);
-      setTree(result.tree);
+      const result = await api.apply(current, pending.sentence, pending.modelOps, choices, lang);
+      setLoaded({ name: current, data: result.tree });
       setPending(null);
       setSentence("");
-      setNotice("Added to the tree.");
+      setNotice(() => (t: Strings) => t.added);
     } catch (e) {
-      setError((e as Error).message);
+      const why = (e as Error).message;
+      setError(() => () => why);
     } finally {
       setBusy(false);
     }
@@ -131,39 +163,44 @@ export default function App() {
     if (!newName) return;
     try {
       const { name } = await api.createTree(newName.trim());
-      setTrees((t) => [...t, name].sort());
+      setTrees((names) => [...names, name].sort());
       setCurrent(name);
       setNewName(null);
     } catch (e) {
-      setError((e as Error).message);
+      const status = e instanceof ApiError ? e.status : 0;
+      const why = (e as Error).message;
+      setError(() => (t: Strings) => (status === 409 ? t.treeExists : status === 400 ? t.badTreeName : why));
     }
   };
 
-  const example = current === DEMO_TREE
-    ? "Percy Florence Shelley was the son of Mary Shelley."
-    : "Maria Rossi è la moglie di Marco Rossi.";
+  const example = current === DEMO_TREE ? t.exampleDemo : t.exampleOther;
+  const seconds = pending?.seconds.toLocaleString(lang, { maximumFractionDigits: 1 });
 
   return (
+    <I18n.Provider value={i18n}>
     <div className="app">
       <header className="bar">
-        <span className="brand">{APP_NAME}</span>
-        <h1 className="tree-title">{current ? titleOf(current) : APP_NAME}</h1>
+        <span className="brand">{t.appName}</span>
+        <h1 className="tree-title">{current ? titleOf(current) : t.appName}</h1>
+        <select className="lang" aria-label={t.language} value={lang} onChange={(e) => changeLang(e.target.value as Lang)}>
+          {LANGS.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
+        </select>
         <div className="picker">
           {newName === null ? (
             <>
-              <label htmlFor="tree">Tree</label>
+              <label htmlFor="tree">{t.tree}</label>
               <select id="tree" value={current} onChange={(e) => setCurrent(e.target.value)}>
-                {trees.map((t) => <option key={t} value={t}>{titleOf(t)}</option>)}
+                {trees.map((name) => <option key={name} value={name}>{titleOf(name)}</option>)}
               </select>
-              <button type="button" className="link" onClick={() => setNewName("")}>New tree</button>
+              <button type="button" className="link" onClick={() => setNewName("")}>{t.newTree}</button>
             </>
           ) : (
             <form className="new-tree" onSubmit={createTree}>
-              <label htmlFor="new-tree">Name</label>
-              <input id="new-tree" value={newName} placeholder="rossi-family" autoFocus
+              <label htmlFor="new-tree">{t.name}</label>
+              <input id="new-tree" value={newName} placeholder={t.newTreePlaceholder} autoFocus
                      onChange={(e) => setNewName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))} />
-              <button type="submit" className="primary small" disabled={!newName}>Create</button>
-              <button type="button" className="link" onClick={() => setNewName(null)}>Cancel</button>
+              <button type="submit" className="primary small" disabled={!newName}>{t.create}</button>
+              <button type="button" className="link" onClick={() => setNewName(null)}>{t.cancel}</button>
             </form>
           )}
         </div>
@@ -173,14 +210,14 @@ export default function App() {
         <div className="canvas">
           {shown && (
             <ReactFlowProvider>
-              <TreeView tree={shown} selectedId={selected} onSelect={setSelected}
+              <TreeView tree={shown} treeName={current} selectedId={selected} onSelect={setSelected}
                         fitKey={`${current}:${tree?.people.length ?? 0}:${pending ? "preview" : "saved"}`} />
             </ReactFlowProvider>
           )}
           {tree && tree.people.length === 0 && !pending && (
             <div className="empty">
-              <p>This tree is empty.</p>
-              <p>Start with one sentence, for example “{example}”</p>
+              <p>{t.emptyTree}</p>
+              <p>{t.startWith(example)}</p>
             </div>
           )}
           {theme === "diodati" && <Bats key={current} />}
@@ -188,42 +225,43 @@ export default function App() {
 
         <aside className="panel">
           <form className="tell" onSubmit={read}>
-            <label htmlFor="sentence">Tell the tree something</label>
+            <label htmlFor="sentence">{t.tell}</label>
             <textarea id="sentence" rows={3} value={sentence} placeholder={example}
                       disabled={!!pending} onChange={(e) => setSentence(e.target.value)} onKeyDown={onKeyDown} />
-            <p className="tip">One fact per sentence works best. Names, dates and places are kept exactly as you write them.</p>
+            <p className="tip">{t.tip}</p>
             {!pending && (
               <button type="submit" className="primary" disabled={busy || !sentence.trim() || !current}>
-                {busy ? "Reading…" : "Read sentence"}
+                {busy ? t.reading : t.read}
               </button>
             )}
           </form>
 
-          {error && <p className="error" role="alert">{error}</p>}
-          {notice && <p className="notice" role="status">{notice}</p>}
+          {error && <p className="error" role="alert">{error(t)}</p>}
+          {notice && <p className="notice" role="status">{notice(t)}</p>}
 
           {pending && (
             <>
-              <p className="read-time">Read in {pending.seconds} s on this computer.</p>
+              <p className="read-time">{t.readIn(seconds ?? "")}</p>
               <PlanView plan={pending.plan} asked={pending.asked} choices={choices} busy={busy} onChoose={choose}
                         onConfirm={confirm} onDiscard={() => setPending(null)} />
             </>
           )}
 
           {!pending && !selectedPerson && tree && tree.people.length > 0 && (
-            <p className="panel-hint">Click a person to see their dates, places and the sentence each fact came from.</p>
+            <p className="panel-hint">{t.clickHint}</p>
           )}
 
           {selectedPerson && shown && (
-            <PersonDetail person={selectedPerson} tree={shown} onClose={() => setSelected(null)} />
+            <PersonDetail person={selectedPerson} tree={shown} treeName={current}
+                          onClose={() => setSelected(null)} onPhotoChanged={reloadTree} />
           )}
 
           <footer className="panel-foot">
-            {model ? <>Sentences are read by {model} with Ollama, on this computer. The tree is a file in the app’s trees folder.</>
-                   : <>Gemma isn’t reachable yet.</>}
+            {model ? t.footer(model) : t.noGemma}
           </footer>
         </aside>
       </main>
     </div>
+    </I18n.Provider>
   );
 }

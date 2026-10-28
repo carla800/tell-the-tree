@@ -14,6 +14,8 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 
+from .messages import Message, term
+
 
 @dataclass
 class Meaning:
@@ -52,10 +54,11 @@ MALE = (r"father|\bdad\b|padre|\bpapa\b|babbo|\bson\b|stepson|grandson|\bfiglio\
         r"fratellastro|husband|marito|nonno|uncle|\bzio\b|nephew|patrigno|cugino|cognato|suocero|genero|"
         r"compagno|fidanzato|boyfriend|gemello")
 
-HALF = Meaning("sibling", kind="half", label="half-sibling (one parent in common)")
-STEP = Meaning("sibling", kind="step", label="step-sibling (their parents married each other)")
-GRANDCHILD = Meaning("hint", kind="grandchild", label="grandchild (a child's child)")
-NIECE = Meaning("hint", kind="niece_nephew", label="niece or nephew (a sibling's child)")
+# Words with two meanings: the label is the question shown to the person (backend/messages.py)
+HALF = Meaning("sibling", kind="half", label="meaning_half")
+STEP = Meaning("sibling", kind="step", label="meaning_step")
+GRANDCHILD = Meaning("hint", kind="grandchild", label="meaning_grandchild")
+NIECE = Meaning("hint", kind="niece_nephew", label="meaning_niece_nephew")
 
 
 def _has(pattern: str, text: str) -> bool:
@@ -152,19 +155,20 @@ def to_tree_ops(model_ops: list[dict]) -> tuple[list[dict], list[str]]:
         person, word, others = op["person"], op["word"], op["of"]
         reading = read_word(word)
         if not reading.meanings:
-            problems.append(f'I don\'t know the relation "{word}" ({person} / {", ".join(others)}).')
+            problems.append(Message("unknown_word", word=word, who=" / ".join([person, *others])))
             continue
         if reading.sex:
             ops.append({"op": "person", "name": person, "sex": reading.sex})
         if reading.ambiguous:
             ops.append({
                 "op": "ambiguous", "word": word, "person": person, "of": others,
-                "options": [{"label": m.label, "ops": meaning_to_ops(m, person, others)} for m in reading.meanings],
+                "options": [{"id": m.kind, "label": term(m.label), "ops": meaning_to_ops(m, person, others)}
+                            for m in reading.meanings],
             })
             continue
         meaning = reading.meanings[0]
         if meaning.category == "couple" and len(others) != 1:
-            problems.append(f'"{word}" needs exactly one partner ({person} / {", ".join(others)}).')
+            problems.append(Message("couple_needs_one", word=word, who=" / ".join([person, *others])))
             continue
         ops += meaning_to_ops(meaning, person, others)
     return _drop_repeats(_merge_parents(_add_implied_unions(ops))), problems
