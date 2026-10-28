@@ -16,6 +16,7 @@ from backend.ops import normalize_ops
 from backend.planner import apply_plan, make_plan
 from backend.seed import seed
 from backend.tree import Tree, load_tree
+from evals.scoring import expected_statuses
 
 ROOT = Path(__file__).resolve().parent.parent
 CASES = yaml.safe_load((ROOT / "tests" / "sentences.yaml").read_text(encoding="utf-8"))["dev"]
@@ -52,8 +53,7 @@ def test_planner_on_expected_ops(case, villa):
     ops, problems = normalize_ops(case["expected_ops"])
     assert not problems
     plan = make_plan(tree, ops)
-    expected = {"save": "save", "ask_which": "ask", "reject": "reject"}[case["expect_code"]]
-    assert plan.status == expected, (plan.errors, plan.questions, plan.summary)
+    assert plan.status in expected_statuses(case["expect_code"]), (plan.errors, plan.questions, plan.summary)
 
 
 def test_ambiguous_names_are_asked_not_guessed(villa):

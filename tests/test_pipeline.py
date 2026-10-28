@@ -11,7 +11,7 @@ from backend import api, llm
 from backend.planner import make_plan
 from backend.seed import seed
 from backend.tree import Tree, load_tree
-from evals.scoring import score_ops
+from evals.scoring import expected_statuses, score_ops
 
 ROOT = Path(__file__).resolve().parent.parent
 DEV = yaml.safe_load((ROOT / "tests" / "sentences.yaml").read_text(encoding="utf-8"))["dev"]
@@ -44,7 +44,7 @@ def villa_tree(tmp_path_factory):
 def test_ideal_answer_gets_the_expected_save_ask_reject(case, villa_tree):
     tree = villa_tree if case["tree"] == "villa-diodati" else Tree()
     plan = make_plan(tree, llm.interpret(IDEAL[case["id"]])["ops"])
-    assert plan.status == {"save": "save", "ask_which": "ask", "reject": "reject"}[case["expect_code"]]
+    assert plan.status in expected_statuses(case["expect_code"])
 
 
 def test_nipote_is_read_from_the_tree_when_possible(villa_tree):
@@ -73,6 +73,19 @@ def test_scoring():
     assert score_ops(expected, same)["ok"]
     assert not score_ops(expected, [])["ok"]
     assert not score_ops([], [{"op": "event", "person": "Byron", "type": "residence"}])["ok"]
+    also_ok = [{"op": "event", "person": "Byron", "type": "residence"}]
+    assert score_ops([], [{"op": "event", "person": "Byron", "type": "residence", "place": "Villa"}], also_ok)["ok"]
+
+
+def test_a_wedding_date_implies_a_marriage():
+    ops = llm.interpret([{"op": "event", "partners": ["Percy", "Mary"], "type": "marriage", "date": "30 December 1816"}])["ops"]
+    assert {"op": "union", "partners": ["Percy", "Mary"], "type": "marriage"} in ops
+    # not twice when the sentence also has a relation word
+    ops = llm.interpret([
+        {"op": "relation", "person": "Percy", "word": "married", "of": ["Mary"]},
+        {"op": "event", "partners": ["Mary", "Percy"], "type": "marriage", "date": "1816"},
+    ])["ops"]
+    assert sum(o["op"] == "union" for o in ops) == 1
 
 
 def test_parse_sentence_survives_broken_json(monkeypatch):

@@ -12,7 +12,8 @@ def op_matches(expected: dict, actual: dict) -> bool:
     return all(key in actual and _norm(actual[key]) == _norm(value) for key, value in expected.items())
 
 
-def score_ops(expected_ops: list[dict], actual_ops: list[dict]) -> dict:
+def score_ops(expected_ops: list[dict], actual_ops: list[dict], also_ok: list[dict] | None = None) -> dict:
+    """`also_ok`: operations that are fine but not required (a second reasonable reading of the sentence)."""
     remaining = list(actual_ops)
     missing = []
     for exp in expected_ops:
@@ -21,5 +22,16 @@ def score_ops(expected_ops: list[dict], actual_ops: list[dict]) -> dict:
             missing.append(exp)
         else:
             remaining.remove(hit)
-    extra = [a for a in remaining if a["op"] != "person"]   # describing a person is always allowed
+    extra = [a for a in remaining
+             if a["op"] != "person"                                      # describing a person is always allowed
+             and not any(op_matches(ok, a) for ok in also_ok or [])]
     return {"ok": not missing and not extra, "missing": missing, "extra": extra}
+
+
+CODE_LABEL = {"save": "save", "ask_which": "ask", "reject": "reject"}
+
+
+def expected_statuses(expect_code) -> set[str]:
+    """`expect_code` is one outcome or a list of acceptable ones."""
+    values = expect_code if isinstance(expect_code, list) else [expect_code]
+    return {CODE_LABEL[v] for v in values}

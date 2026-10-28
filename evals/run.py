@@ -22,12 +22,9 @@ from backend import llm
 from backend.planner import make_plan
 from backend.seed import seed
 from backend.tree import Tree, load_tree
-from evals.scoring import score_ops
+from evals.scoring import expected_statuses, score_ops
 
 ROOT = Path(__file__).resolve().parent.parent
-CODE_LABEL = {"save": "save", "ask_which": "ask", "reject": "reject"}
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--set", default="dev", help="dev or holdout")
@@ -55,11 +52,11 @@ def main():
     with out_path.open("w", encoding="utf-8") as log:
         for case in cases:
             result = llm.parse_sentence(case["sentence"], model=args.model)
-            score = score_ops(case["expected_ops"], result["ops"])
+            score = score_ops(case["expected_ops"], result["ops"], case.get("also_ok"))
             tree = villa if case["tree"] == "villa-diodati" else Tree()
             plan = make_plan(tree, result["ops"])
-            expected_code = CODE_LABEL[case["expect_code"]]
-            code_pass = plan.status == expected_code
+            expected_code = "/".join(sorted(expected_statuses(case["expect_code"])))
+            code_pass = plan.status in expected_statuses(case["expect_code"])
 
             model_ok += score["ok"]
             code_ok += code_pass

@@ -86,3 +86,15 @@ What was still wrong:
 - An unknown word ("madrina") becomes a warning in the preview, never a silent drop.
 - New test file `tests/model_answers.yaml`: the ideal Gemma answer for each dev sentence, written from the sentences alone. With those answers the whole pipeline gets 15/15, so from now on any failure in the evals is Gemma's, not the dictionary's.
 - 125 tests in total.
+
+## Run 3 - prompt p3
+
+**Model 11/15 (from 8), code 14/15.** Stepsister, mother, grandson, "figlio adottivo", "fratelli", "never married": all copied and read correctly.
+
+Three of the four failures had the same cause, and it was my format, not Gemma: for d02, d06 and d08 Gemma wrote the wedding with its date (an event) but not also a relation word "married". A wedding with a date *means* they were married; the code should infer that instead of asking Gemma to say it twice. Fixed in code: a marriage event now implies the union.
+
+**Decision on d10** ("Villa Diodati is a mansion near Lake Geneva, rented by Byron in June 1816"). Gemma read it as Byron living at Villa Diodati, which is a fair reading, and the app then asked which Byron, which is right: the tree has Lord Byron, Allegra Byron and Ada (born Byron). I had written "decide after the first run" in the test; I'm now accepting that reading as a second correct answer (`also_ok`). Changing dev sentences after seeing results is fine as long as it's written down: that's what the untouched holdout set is for.
+
+Still wrong: d06, the longest sentence. Gemma loses "their only child, Ada" (the parent link) and copies "London" from Ada's birth onto the wedding. A small-model limit with long sentences: something to say honestly in the post.
+
+Replaying run 3's exact answers through the new code: **model 14/15, code 15/15.**

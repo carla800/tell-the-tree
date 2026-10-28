@@ -84,8 +84,12 @@ dev:
   - id: d10
     tree: villa-diodati
     sentence: "Villa Diodati is a mansion near Lake Geneva, rented by Byron in June 1816."
-    expected_ops: []    # no family facts (a residence for Byron would also be acceptable - decide after the first run)
-    expect_code: save
+    expected_ops: []
+    # Decided after runs 1-3: "rented by Byron" can fairly be read as Byron living there.
+    # Then the app must ask which Byron: the tree has Lord Byron, Allegra Byron and Ada (born Byron).
+    also_ok:
+      - { op: event, person: Byron, type: residence, place: Villa Diodati }
+    expect_code: [save, ask_which]
 
   - id: d11
     tree: villa-diodati

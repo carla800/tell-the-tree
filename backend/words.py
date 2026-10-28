@@ -167,7 +167,21 @@ def to_tree_ops(model_ops: list[dict]) -> tuple[list[dict], list[str]]:
             problems.append(f'"{word}" needs exactly one partner ({person} / {", ".join(others)}).')
             continue
         ops += meaning_to_ops(meaning, person, others)
-    return _merge_parents(ops), problems
+    return _merge_parents(_add_implied_unions(ops)), problems
+
+
+def _add_implied_unions(ops: list[dict]) -> list[dict]:
+    """A wedding with a date means the two were married, even if the sentence has no relation word for it."""
+    couples = {frozenset(n.casefold() for n in o["partners"]) for o in ops if o["op"] == "union"}
+    result = []
+    for op in ops:
+        if op["op"] == "event" and op.get("type") in ("marriage", "divorce") and len(op.get("partners", [])) == 2:
+            key = frozenset(n.casefold() for n in op["partners"])
+            if key not in couples:
+                couples.add(key)
+                result.append({"op": "union", "partners": list(op["partners"]), "type": "marriage"})
+        result.append(op)
+    return result
 
 
 def _merge_parents(ops: list[dict]) -> list[dict]:
