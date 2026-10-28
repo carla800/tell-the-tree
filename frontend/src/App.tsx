@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent, type Keyboar
 import { ReactFlowProvider } from "@xyflow/react";
 import { api, ApiError } from "./api";
 import { Bats } from "./Bats";
+import { ByHand } from "./ByHand";
 import { PersonDetail } from "./PersonDetail";
 import { PlanView, questionKey } from "./PlanView";
 import { withPreview } from "./preview";
@@ -17,7 +18,8 @@ interface Pending {
   modelOps: unknown[];
   plan: Plan;
   asked: Question[];
-  seconds: number;
+  seconds: number | null;     // null when added by hand: Gemma didn't read anything
+  byHand: boolean;
 }
 
 const addQuestions = (asked: Question[], plan: Plan) =>
@@ -96,7 +98,7 @@ export default function App() {
       const result = await api.parse(current, sentence.trim(), lang);
       setChoices({});
       setPending({ sentence: sentence.trim(), modelOps: result.model_ops, plan: result.plan,
-                   asked: addQuestions([], result.plan), seconds: result.seconds });
+                   asked: addQuestions([], result.plan), seconds: result.seconds, byHand: false });
     } catch (e) {
       const why = (e as Error).message;
       setError(() => (t: Strings) => t.gemmaFailed(why));
@@ -136,6 +138,23 @@ export default function App() {
     } catch { /* the old plan stays: still right, just in the other language */ }
   };
 
+  // The form writes Gemma's operations: from here on it's the same flow as a sentence
+  const previewByHand = async (modelOps: unknown[], initial: Choices) => {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const { plan } = await api.plan(current, modelOps, initial, lang);
+      setChoices(initial);
+      setPending({ sentence: "", modelOps, plan, asked: addQuestions([], plan), seconds: null, byHand: true });
+    } catch (e) {
+      const why = (e as Error).message;
+      setError(() => () => why);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const reloadTree = () => {
     const name = current;
     api.getTree(name).then((data) => setLoaded({ name, data })).catch(() => undefined);
@@ -145,10 +164,10 @@ export default function App() {
     if (!pending) return;
     setBusy(true);
     try {
-      const result = await api.apply(current, pending.sentence, pending.modelOps, choices, lang);
+      const result = await api.apply(current, pending.sentence, pending.modelOps, choices, lang, pending.byHand);
       setLoaded({ name: current, data: result.tree });
       setPending(null);
-      setSentence("");
+      if (!pending.byHand) setSentence("");
       setNotice(() => (t: Strings) => t.added);
     } catch (e) {
       const why = (e as Error).message;
@@ -174,7 +193,7 @@ export default function App() {
   };
 
   const example = current === DEMO_TREE ? t.exampleDemo : t.exampleOther;
-  const seconds = pending?.seconds.toLocaleString(lang, { maximumFractionDigits: 1 });
+  const seconds = pending?.seconds?.toLocaleString(lang, { maximumFractionDigits: 1 });
 
   return (
     <I18n.Provider value={i18n}>
@@ -236,12 +255,14 @@ export default function App() {
             )}
           </form>
 
+          {!pending && tree && <ByHand person={null} tree={tree} disabled={busy} onPreview={previewByHand} />}
+
           {error && <p className="error" role="alert">{error(t)}</p>}
           {notice && <p className="notice" role="status">{notice(t)}</p>}
 
           {pending && (
             <>
-              <p className="read-time">{t.readIn(seconds ?? "")}</p>
+              {seconds && <p className="read-time">{t.readIn(seconds)}</p>}
               <PlanView plan={pending.plan} asked={pending.asked} choices={choices} busy={busy} onChoose={choose}
                         onConfirm={confirm} onDiscard={() => setPending(null)} />
             </>
@@ -254,6 +275,9 @@ export default function App() {
           {selectedPerson && shown && (
             <PersonDetail person={selectedPerson} tree={shown} treeName={current}
                           onClose={() => setSelected(null)} onPhotoChanged={reloadTree} />
+          )}
+          {selectedPerson && selectedPerson.id > 0 && !pending && tree && (
+            <ByHand key={selectedPerson.id} person={selectedPerson} tree={tree} disabled={busy} onPreview={previewByHand} />
           )}
 
           <footer className="panel-foot">

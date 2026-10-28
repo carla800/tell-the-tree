@@ -37,8 +37,8 @@ export const api = {
     call<{ model_ops: unknown[]; seconds: number; plan: Plan }>(`/trees/${name}/parse`, { body: { sentence, lang } }),
   plan: (name: string, model_ops: unknown[], choices: Choices, lang: Lang) =>
     call<{ plan: Plan }>(`/trees/${name}/plan`, { body: { model_ops, choices, lang } }),
-  apply: (name: string, sentence: string, model_ops: unknown[], choices: Choices, lang: Lang) =>
-    call<{ saved: string[]; tree: TreeData }>(`/trees/${name}/apply`, { body: { sentence, model_ops, choices, lang } }),
+  apply: (name: string, sentence: string, model_ops: unknown[], choices: Choices, lang: Lang, by_hand = false) =>
+    call<{ saved: string[]; tree: TreeData }>(`/trees/${name}/apply`, { body: { sentence, model_ops, choices, lang, by_hand } }),
   setPhoto: (name: string, personId: number, picture: Blob) =>
     call<{ photo: string }>(`/trees/${name}/people/${personId}/photo`, { method: "PUT", raw: picture }),
   removePhoto: (name: string, personId: number) =>

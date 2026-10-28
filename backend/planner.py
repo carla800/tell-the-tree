@@ -179,9 +179,15 @@ class Planner:
             free = [i for i, p in enumerate(fam.partners) if p is None]
             missing = list(wanted - known)
             if known <= wanted and len(missing) <= len(free):
-                for slot, p in zip(free, missing):
-                    fam.partners[slot] = p
-                self.plan.changes.append({"action": "update_family", "id": fam.id, "fields": {"partners": list(fam.partners)}})
+                couple = self._find_union(*parents) if len(parents) == 2 else None
+                if couple is not None and couple.id != fam.id:
+                    # "Mario and Lorenzo are brothers", "Virginia married Filippo", then "Mario is their son":
+                    # the brothers' family and the couple are the same family
+                    self._merge_families(fam, couple)
+                else:
+                    for slot, p in zip(free, missing):
+                        fam.partners[slot] = p
+                    self.plan.changes.append({"action": "update_family", "id": fam.id, "fields": {"partners": list(fam.partners)}})
                 self.plan.summary.append(M("parent_added", child=self.name(child), parents=[self.name(p) for p in missing]))
                 return
             names = [self.name(p) for p in known] or Term("other_parents")
@@ -192,6 +198,16 @@ class Planner:
         self._add_child(fam, child, relation)
         key = "adopted_child_of" if relation == "adopted" else "child_of"
         self.plan.summary.append(M(key, child=self.name(child), parents=[self.name(p) for p in parents]))
+
+    def _merge_families(self, source: Family, target: Family):
+        """Moves the children and events of `source` into `target`, then removes `source`."""
+        for child, relation in source.children.items():
+            target.children.setdefault(child, relation)
+        for e in self.tree.events:
+            if e.family_id == source.id:
+                e.family_id = target.id
+        del self.tree.families[source.id]
+        self.plan.changes.append({"action": "merge_family", "from": source.id, "into": target.id})
 
     def _family_for_parents(self, parents: list) -> Family:
         if len(parents) == 2:
@@ -323,6 +339,14 @@ class Planner:
             if died is not None and year > died:
                 self.plan.errors.append(M("err_born_after_death", name=name, died=died, year=year))
                 return False
+            for p in self.tree.parents(pid):      # the parents may have arrived in the same sentence
+                p_born, p_died = self.tree.year(p, "birth"), self.tree.year(p, "death")
+                if p_born is not None and p_born >= year:
+                    self.plan.errors.append(M("err_parent_younger", parent=self.name(p), pb=p_born, child=name, cb=year))
+                    return False
+                if p_died is not None and p_died < year - 1:
+                    self.plan.errors.append(M("err_parent_dead", parent=self.name(p), pd=p_died, child=name, cb=year))
+                    return False
             for c in self.tree.children(pid):
                 cb = self.tree.year(c, "birth")
                 if cb is not None and cb <= year:
@@ -419,13 +443,16 @@ def make_plan(tree: Tree, ops: list[dict], choices: dict | None = None) -> Plan:
     return Planner(tree, choices).run(ops)
 
 
-def apply_plan(conn, plan: Plan, sentence: str | None = None) -> dict:
+BY_HAND = "By hand"
+
+
+def apply_plan(conn, plan: Plan, sentence: str | None = None, by_hand: bool = False) -> dict:
     """Writes a confirmed plan. Temporary (negative) ids become real ids."""
     if plan.status != "save":
         raise ValueError(f"Can't save a plan with status '{plan.status}'.")
     ids = {}
     real = lambda x: ids.get(x, x) if x is not None else None  # noqa: E731
-    source = f'From: "{sentence}"' if sentence else None
+    source = BY_HAND if by_hand else f'From: "{sentence}"' if sentence else None
     with conn:
         for c in plan.changes:
             a = c["action"]
@@ -456,6 +483,12 @@ def apply_plan(conn, plan: Plan, sentence: str | None = None) -> dict:
                     "INSERT INTO event (person_id, family_id, type, date_text, place, description, source) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (real(c.get("person")), real(c.get("family")), c["type"], c["date_text"], c["place"], c["description"], source),
                 )
+            elif a == "merge_family":
+                source, target = real(c["from"]), real(c["into"])
+                conn.execute("UPDATE OR IGNORE family_child SET family_id = ? WHERE family_id = ?", (target, source))
+                conn.execute("DELETE FROM family_child WHERE family_id = ?", (source,))
+                conn.execute("UPDATE event SET family_id = ? WHERE family_id = ?", (target, source))
+                conn.execute("DELETE FROM family WHERE id = ?", (source,))
             elif a == "add_claim":
                 conn.execute("INSERT INTO claim (a_id, b_id, kind, sentence) VALUES (?, ?, ?, ?)",
                              (real(c["a"]), real(c["b"]), c["kind"], sentence))

@@ -133,3 +133,39 @@ def test_an_event_already_in_the_tree_is_not_added_twice(villa):
     # a new detail is still added
     other = [{"op": "event", "person": "Mary Shelley", "type": "residence", "place": "Villa Diodati"}]
     assert make_plan(tree, normalize_ops(other)[0]).changes
+
+
+def test_brothers_then_parents_make_one_family(tmp_path):
+    """Seen in a real test tree: brothers first, then the couple, then 'Mario is their son'.
+    The brothers' family and the couple's family must become one, not two knots for the same couple."""
+    from backend import llm
+    conn = connect(tmp_path / "rossi.db")
+    steps = [
+        [{"op": "relation", "person": "Mario", "word": "fratello", "of": ["Lorenzo"]}],
+        [{"op": "relation", "person": "Virginia", "word": "moglie", "of": ["Filippo"]}],
+        [{"op": "relation", "person": "Mario", "word": "figlio", "of": ["Virginia", "Filippo"]}],
+    ]
+    for raw in steps:
+        plan = make_plan(load_tree(conn), llm.interpret(raw)["ops"])
+        assert plan.status == "save", plan.errors
+        apply_plan(conn, plan, "test")
+    tree = load_tree(conn)
+    assert len(tree.families) == 1
+    family = next(iter(tree.families.values()))
+    by_name = {p.name: p.id for p in tree.people.values()}
+    assert family.union_type == "marriage"
+    assert set(family.children) == {by_name["Mario"], by_name["Lorenzo"]}
+
+
+def test_a_child_born_before_the_parent_is_rejected_in_any_order(tmp_path):
+    """'Paolo, born in 1940, is Virginia's son' when Virginia was born in 1950: the relation comes first,
+    the birth second, in the same sentence."""
+    from backend import llm
+    conn = connect(tmp_path / "t.db")
+    first = llm.interpret([{"op": "event", "person": "Virginia", "type": "birth", "date": "1950"}])["ops"]
+    apply_plan(conn, make_plan(load_tree(conn), first), "test")
+    raw = [{"op": "relation", "person": "Paolo", "word": "son", "of": ["Virginia"]},
+           {"op": "event", "person": "Paolo", "type": "birth", "date": "1940"}]
+    plan = make_plan(load_tree(conn), llm.interpret(raw)["ops"])
+    assert plan.status == "reject"
+    assert "Virginia (born 1950) can't be the parent of Paolo (born 1940)." in plan.errors

@@ -162,3 +162,17 @@ Same 15 sentences, same prompt p3, but with `gemma4:e4b-it-qat` (a 6 GB download
 **A bug found while testing.** Switching from a tree with photos to another one asked the server for a photo that didn't exist (404): for an instant, the old tree was drawn under the new tree's name. Now a tree's data always travels with its name.
 
 136 tests.
+
+**Cards a little wider.** With a photo, "Wollstonecraft" broke in the middle of the word: the name had 106 pixels and the word needs 113. The cards are now 196 px instead of 184, the miniature is smaller, and if a name still doesn't fit the browser breaks it with a hyphen instead of anywhere.
+
+## Adding people by hand
+
+Typing a sentence isn't always the quickest way, so now you can also click a person and choose "Add a relative": mother, father, daughter, son, sister, brother, wife, husband or partner, a name, and optionally when and where they were born. For a child, the person's partner is already filled in as the other parent. In an empty tree, "Or add a person by hand" adds the first one.
+
+**The form writes the same operations Gemma writes** (`{"op": "relation", "person": "Mario Rossi", "word": "son", "of": ["Virginia Bianchi", "Filippo Rossi"]}`), so from there it's exactly the same path: the same dictionary, the same checks, the same preview in the tree, and nothing is saved before "Add to tree". The person you clicked is passed as an answer already given, so two people with the same name never get mixed up. The source of these facts says "Added by hand".
+
+**Two engine bugs found by building a fake family:**
+- *Two knots for the same couple.* "Mario and Lorenzo are brothers", then "Virginia married Filippo", then "Mario is their son": the app filled the brothers' family with the two parents instead of joining it to the couple that already existed, so the tree showed Virginia and Filippo twice, once as a couple and once as parents. Now the two families become one (a new `merge_family` change, also drawn in the preview).
+- *A son older than his mother was accepted* when the relation and the birth arrived together, by hand or in a sentence like "Paolo, born in 1940, is Virginia's son". The check only worked if the birth was already in the tree before the relation. Now a birth is also checked against the parents.
+
+139 tests.

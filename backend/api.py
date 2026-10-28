@@ -60,7 +60,8 @@ class PlanRequest(BaseModel):
 
 
 class ApplyRequest(PlanRequest):
-    sentence: str
+    sentence: str = ""
+    by_hand: bool = False                # added with the form in the interface, not with a sentence
 
 
 def _path(name: str) -> Path:
@@ -156,7 +157,7 @@ def apply(name: str, req: ApplyRequest):
         if plan.status != "save":
             raise HTTPException(409, {"message": "The sentence needs answers or has errors.",
                                       "plan": _plan_json(plan, req.lang)})
-        apply_plan(conn, plan, req.sentence)
+        apply_plan(conn, plan, req.sentence, by_hand=req.by_hand)
         return {"saved": [translate(s, req.lang) for s in plan.summary], "tree": _tree_json(conn)}
 
 

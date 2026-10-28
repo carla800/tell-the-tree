@@ -85,3 +85,21 @@ def test_only_real_pictures_are_accepted(client):
     assert client.put("/api/trees/villa-diodati/people/9999/photo", content=TINY_PNG).status_code == 404
     too_big = b"\xff\xd8\xff" + b"0" * api.PHOTO_MAX_BYTES
     assert client.put(url, content=too_big).status_code == 413
+
+
+def test_a_relative_added_by_hand(client):
+    """The form in the interface writes the same operations as Gemma, and goes through the same checks."""
+    tree = client.get("/api/trees/villa-diodati").json()
+    ada = next(p for p in tree["people"] if p["name"] == "Ada Lovelace")
+    model_ops = [{"op": "relation", "person": "Byron King-Noel", "word": "son", "of": ["Ada Lovelace"]},
+                 {"op": "event", "person": "Byron King-Noel", "type": "birth", "date": "1836"}]
+    choices = {"Ada Lovelace": ada["id"]}
+    plan = client.post("/api/trees/villa-diodati/plan", json={"model_ops": model_ops, "choices": choices}).json()["plan"]
+    assert plan["status"] == "save"
+    body = {"model_ops": model_ops, "choices": choices, "by_hand": True}
+    people = {p["name"]: p for p in client.post("/api/trees/villa-diodati/apply", json=body).json()["tree"]["people"]}
+    assert people["Byron King-Noel"]["sex"] == "M"
+    assert people["Byron King-Noel"]["events"][0]["source"] == "By hand"
+    # the same checks as a sentence: a mother can't be younger than her child
+    wrong = [{"op": "relation", "person": "Ada Lovelace", "word": "mother", "of": ["Lord Byron"]}]
+    assert client.post("/api/trees/villa-diodati/plan", json={"model_ops": wrong}).json()["plan"]["status"] == "reject"

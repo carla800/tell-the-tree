@@ -16,6 +16,7 @@ function Source({ text }: { text: string | null }) {
   if (/^https?:\/\//.test(text)) {
     return <a className="source" href={text} target="_blank" rel="noreferrer">{t.sourceWeb(new URL(text).hostname)}</a>;
   }
+  if (text === "By hand") return <span className="source">{t.byHand}</span>;
   const sentence = text.match(/^From: "(.*)"$/s);
   return <span className="source">{sentence ? t.fromSentence(sentence[1]) : text}</span>;
 }

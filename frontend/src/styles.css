@@ -228,6 +228,22 @@ a.source { color: var(--text-soft); }
 
 .panel-hint { margin: 0; color: var(--text-soft); }
 
+/* adding people without a sentence */
+.by-hand-open { align-self: flex-start; }
+.by-hand {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.by-hand label { display: flex; flex-direction: column; gap: 4px; }
+.by-hand label span { font-size: 0.9rem; color: var(--text-soft); }
+.by-hand input, .by-hand select { width: 100%; background: var(--panel); }
+.by-hand-actions { display: flex; gap: 14px; align-items: center; }
+
 .panel-foot { margin-top: auto; color: var(--text-soft); font-size: 0.85rem; }
 
 /* ---------- the tree ---------- */

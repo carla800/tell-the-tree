@@ -57,6 +57,17 @@ export function withPreview(tree: TreeData, changes: Change[]): TreeData {
         if (p && c.type === "death") p.died = yearOf(c.date_text);
         break;
       }
+      case "merge_family": {
+        // the children move to the couple's family: drawn as new links
+        const from = families.get(c.from as number);
+        const into = families.get(c.into as number);
+        if (from && into) {
+          const moved = from.children.filter((k) => !into.children.some((x) => x.id === k.id));
+          into.children = [...into.children, ...moved.map((k) => ({ ...k, pending: true }))];
+          families.delete(from.id);
+        }
+        break;
+      }
       case "add_claim":
         claims.push({ id: -claims.length - 1000, a_id: c.a as number, b_id: c.b as number, kind: c.kind as string, sentence: null, pending: true });
         break;
