@@ -1,0 +1,23 @@
+TEST APP - FRASI E RELAZIONI DA RICONOSCERE
+
+FAMIGLIA INVENTATA (italiano colloquiale)
+
+1. Frase: «Nonna Lucia era la sorella di zio Pietro.»
+   Cosa l'app dovrebbe capire: Lucia e Pietro sono fratelli.
+
+2. Frase: «La Maria, quella che ha sposato il figlio di nonno Carlo, si chiama così anche lei.»
+   Cosa l'app dovrebbe capire: Maria è sposata con un figlio di Carlo; il nome del marito non è specificato. Non confondere questa Maria con altre persone omonime.
+
+3. Frase: «Ti ricordi Anna? Sua mamma era la zia Teresa, sorella di papà.»
+   Cosa l'app dovrebbe capire: Teresa è la madre di Anna ed è sorella del padre di chi parla; Anna è cugina di chi parla.
+
+4. Frase: «Quando è nato Luigi, sua sorella Rosa aveva già cinque anni.»
+   Cosa l'app dovrebbe capire: Luigi e Rosa sono fratelli; Rosa è più grande di Luigi di circa cinque anni.
+
+VILLA DIODATI (persone storiche)
+
+5. Frase: «Mary Godwin, che poi diventò Mary Shelley, era la compagna di Percy Bysshe Shelley quando soggiornarono vicino a Villa Diodati nel 1816.»
+   Cosa l'app dovrebbe capire: Mary Godwin e Mary Shelley sono la stessa persona; Mary e Percy Bysshe Shelley erano una coppia. Non creare due persone distinte per Mary.
+
+6. Frase: «William Godwin era il padre di Mary Godwin, mentre William Polidori era il padre di John William Polidori, presente a Villa Diodati.»
+   Cosa l'app dovrebbe capire: William Godwin è il padre di Mary Godwin; William Polidori è il padre di John William Polidori. I due William sono persone diverse e non vanno fusi; John William Polidori è una terza persona.
