@@ -263,7 +263,7 @@ a.source { color: var(--text-soft); }
 
 /* a person is an index card: the name sits on the red header rule */
 .person {
-  width: 184px;
+  width: 196px;
   min-height: 74px;
   padding: 8px 12px 9px;
   background: var(--card);
@@ -281,12 +281,12 @@ a.source { color: var(--text-soft); }
 }
 
 /* a photo sits at the left of the card: an oval miniature at the villa, a pasted print in the register */
-.person.has-photo { display: flex; gap: 10px; align-items: flex-start; }
+.person.has-photo { display: flex; gap: 8px; align-items: flex-start; }
 .person-text { min-width: 0; flex: 1; }
 .person-photo {
   flex: none;
-  width: 42px;
-  height: 54px;
+  width: 36px;
+  height: 46px;
   margin-top: 2px;
   object-fit: cover;
   border: 1px solid var(--card-border);
@@ -301,7 +301,8 @@ a.source { color: var(--text-soft); }
   line-height: 1.2;
   padding-bottom: 3px;
   border-bottom: 1px solid var(--card-rule);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 .person-years { margin-top: 4px; font-size: 0.85rem; color: var(--card-soft); }
 .person-birthname { font-size: 0.78rem; color: var(--card-soft); font-style: italic; line-height: 1.3; }

@@ -2,7 +2,7 @@ import dagre from "@dagrejs/dagre";
 import type { Edge, Node } from "@xyflow/react";
 import type { Person, TreeData } from "./types";
 
-export const PERSON_W = 184;
+export const PERSON_W = 196;
 export const PERSON_H = 74;
 const KNOT = 14;
 
@@ -18,7 +18,7 @@ export interface LayoutOptions {
 
 /** A first guess, used until the card has been drawn and measured. */
 function guessHeight(p: Person): number {
-  const nameLines = p.name.length > (p.photo ? 12 : 20) ? 2 : 1;
+  const nameLines = p.name.length > (p.photo ? 14 : 21) ? 2 : 1;
   const birth = p.birth_name && p.birth_name !== p.name ? (p.birth_name.length > 21 ? 2 : 1) : 0;
   return PERSON_H + (nameLines - 1) * 22 + birth * 16 - (birth ? 4 : 0);
 }
