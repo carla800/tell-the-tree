@@ -1,0 +1,165 @@
+# Test sentences (dev set, v0) - written BEFORE any model run
+#
+# How scoring will work:
+#  - model check: every expected op must be in Gemma's answer (order does not matter,
+#    names compared ignoring case). Extra `person` ops are fine; any other extra op is an error.
+#  - code check: after the ops, the code must do what `expect_code` says
+#    (save / ask which person / reject with a reason).
+#
+# The tree is loaded from data/villa-diodati.yaml before each Villa Diodati test,
+# and starts empty before each Rossi test.
+
+dev:
+
+  - id: d01
+    tree: empty
+    sentence: "Mary Shelley was the daughter of William Godwin and Mary Wollstonecraft."
+    expected_ops:
+      - { op: child, child: Mary Shelley, parents: [William Godwin, Mary Wollstonecraft], relation: birth }
+    expect_code: save
+
+  - id: d02
+    tree: empty
+    sentence: "William Godwin married Mary Wollstonecraft at St Pancras Church in March 1797."
+    expected_ops:
+      - { op: union, partners: [William Godwin, Mary Wollstonecraft], type: marriage }
+      - { op: event, partners: [William Godwin, Mary Wollstonecraft], type: marriage, date: March 1797, place: St Pancras Church }
+    expect_code: save
+
+  - id: d03
+    tree: empty
+    sentence: "Mary Wollstonecraft died in London in September 1797, a few days after giving birth."
+    expected_ops:
+      - { op: event, person: Mary Wollstonecraft, type: death, date: September 1797, place: London }
+    expect_code: save
+
+  - id: d04
+    tree: villa-diodati
+    sentence: "Fanny Imlay was Mary Shelley's half-sister on her mother's side."
+    expected_ops:
+      - { op: siblings, people: [Fanny Imlay, Mary Shelley], kind: half, shared_parent: mother }
+    expect_code: save   # already consistent with the tree: nothing new to add, and no error
+
+  - id: d05
+    tree: empty
+    sentence: "Claire Clairmont was Mary Shelley's stepsister."
+    expected_ops:
+      - { op: siblings, people: [Claire Clairmont, Mary Shelley], kind: step }
+    expect_code: save
+
+  - id: d06
+    tree: empty
+    sentence: "Byron and Annabella Milbanke married on 2 January 1815; their only child, Ada, was born in London on 10 December 1815."
+    expected_ops:
+      - { op: union, partners: [Byron, Annabella Milbanke], type: marriage }
+      - { op: event, partners: [Byron, Annabella Milbanke], type: marriage, date: 2 January 1815 }
+      - { op: child, child: Ada, parents: [Byron, Annabella Milbanke], relation: birth }
+      - { op: event, person: Ada, type: birth, date: 10 December 1815, place: London }
+    expect_code: save
+
+  - id: d07
+    tree: empty
+    sentence: "Allegra was the daughter of Lord Byron and Claire Clairmont, who never married."
+    expected_ops:
+      - { op: union, partners: [Lord Byron, Claire Clairmont], type: partnership }
+      - { op: child, child: Allegra, parents: [Lord Byron, Claire Clairmont], relation: birth }
+    expect_code: save
+
+  - id: d08
+    tree: villa-diodati
+    sentence: "Percy married Mary on 30 December 1816."
+    expected_ops:
+      - { op: union, partners: [Percy, Mary], type: marriage }
+      - { op: event, partners: [Percy, Mary], type: marriage, date: 30 December 1816 }
+    expect_code: ask_which   # two Percys and two Marys in the tree: the code must ask, never guess
+    note: Gemma must copy "Percy" and "Mary" as written, not expand them to full names.
+
+  - id: d09
+    tree: villa-diodati
+    sentence: "Percy Florence Shelley was William Godwin's grandson."
+    expected_ops:
+      - { op: relation_hint, a: Percy Florence Shelley, b: William Godwin, kind: grandchild }
+    expect_code: save   # the tree already explains it through Mary Shelley
+
+  - id: d10
+    tree: villa-diodati
+    sentence: "Villa Diodati is a mansion near Lake Geneva, rented by Byron in June 1816."
+    expected_ops: []    # no family facts (a residence for Byron would also be acceptable - decide after the first run)
+    expect_code: save
+
+  - id: d11
+    tree: villa-diodati
+    sentence: "Ada Lovelace was Lord Byron's mother."
+    expected_ops:
+      - { op: child, child: Lord Byron, parents: [Ada Lovelace], relation: birth }
+    expect_code: reject   # Ada is Byron's daughter: she would be her own grandmother
+    note: Gemma must faithfully translate even a wrong sentence. Catching the mistake is the code's job.
+
+  # --- Italian, fictional Rossi family (the real use case: parents dictating) ---
+
+  - id: d12
+    tree: empty
+    sentence: "Maria Rossi è la moglie di Marco Rossi."
+    expected_ops:
+      - { op: union, partners: [Maria Rossi, Marco Rossi], type: marriage }
+    expect_code: save
+
+  - id: d13
+    tree: empty
+    sentence: "Marco e Roberta sono fratelli."
+    expected_ops:
+      - { op: siblings, people: [Marco, Roberta], kind: unspecified }
+    expect_code: save
+    note: 'The word "fratelli" does not say whether they share both parents.'
+
+  - id: d14
+    tree: empty
+    sentence: "Roberta è nata a Padova nel 1960, poi si è trasferita a Parigi."
+    expected_ops:
+      - { op: event, person: Roberta, type: birth, date: "1960", place: Padova }
+      - { op: event, person: Roberta, type: residence, place: Parigi }
+    expect_code: save
+
+  - id: d15
+    tree: empty
+    sentence: "Giuseppe è il figlio adottivo di Maria e Marco."
+    expected_ops:
+      - { op: child, child: Giuseppe, parents: [Maria, Marco], relation: adopted }
+    expect_code: save
+
+# Holdout set: written by Carla, without looking at any model output.
+# Run ONCE at the end, after the prompt and the code are frozen (git tag).
+# Suggested mix: at least 3 in Italian; one with an ambiguous name; one half- or
+# step-relation; one sentence with no family facts; one with several facts at once;
+# one that says something impossible.
+holdout:
+  - id: h01
+    tree:
+    sentence:
+    expected_ops:
+    expect_code:
+  - id: h02
+    tree:
+    sentence:
+    expected_ops:
+    expect_code:
+  - id: h03
+    tree:
+    sentence:
+    expected_ops:
+    expect_code:
+  - id: h04
+    tree:
+    sentence:
+    expected_ops:
+    expect_code:
+  - id: h05
+    tree:
+    sentence:
+    expected_ops:
+    expect_code:
+  - id: h06
+    tree:
+    sentence:
+    expected_ops:
+    expect_code:

@@ -1,0 +1,301 @@
+# Villa Diodati family: demo data and ground truth
+#
+# Prepared by Claude from public sources. NOT YET VERIFIED.
+# Workflow: Carla checks each entry against its source and sets `verified: true`.
+# Where sources disagree, both versions are noted in `check:`.
+#
+# Dates: YYYY, YYYY-MM or YYYY-MM-DD. Places as written in English sources.
+
+people:
+
+  # --- Mary Shelley's parents and their circle ---
+  - id: william-godwin
+    name: William Godwin
+    sex: M
+    birth: { date: 1756-03-03, place: Wisbech, Cambridgeshire }
+    death: { date: 1836-04-07, place: London }
+    notes: Philosopher and novelist.
+    source: https://en.wikipedia.org/wiki/William_Godwin
+    verified: false
+
+  - id: mary-wollstonecraft
+    name: Mary Wollstonecraft
+    sex: F
+    birth: { date: 1759-04-27, place: Spitalfields, London }
+    death: { date: 1797-09-10, place: London }
+    notes: Philosopher, author of A Vindication of the Rights of Woman. Died eleven days after giving birth to Mary.
+    source: https://en.wikipedia.org/wiki/Mary_Wollstonecraft
+    verified: false
+
+  - id: gilbert-imlay
+    name: Gilbert Imlay
+    sex: M
+    birth: { date: 1754 }
+    death: { date: 1828 }
+    notes: American writer and merchant. Father of Fanny Imlay.
+    source: https://en.wikipedia.org/wiki/Gilbert_Imlay
+    verified: false
+
+  - id: fanny-imlay
+    name: Fanny Imlay
+    sex: F
+    birth: { date: 1794-05-14, place: Le Havre, France }
+    death: { date: 1816-10-09, place: Swansea, Wales }
+    notes: Mary Shelley's half-sister (same mother). Sensitive - died by suicide; keep the wording respectful in the app.
+    source: https://en.wikipedia.org/wiki/Fanny_Imlay
+    verified: false
+
+  - id: mary-jane-godwin
+    name: Mary Jane Godwin
+    birth_name: Mary Jane de Vial
+    also_known_as: Mary Jane Clairmont
+    sex: F
+    birth: { date: 1768, place: Exeter }
+    death: { date: 1841-06-17, place: London }
+    notes: William Godwin's second wife. Mother of Charles and Claire Clairmont.
+    source: https://en.wikipedia.org/wiki/Mary_Jane_Godwin
+    check: Some older sources give 1766 as her birth year; Wikipedia says 1768.
+    verified: false
+
+  - id: charles-clairmont
+    name: Charles Gaulis Clairmont
+    sex: M
+    birth: { date: 1795, place: Bristol }
+    death: { date: 1849 }
+    notes: Father believed to be Charles Abram Marc Gaulis, a Swiss merchant (no evidence of a marriage). Left unknown in the tree on purpose.
+    source: https://en.wikipedia.org/wiki/Mary_Jane_Godwin
+    verified: false
+
+  - id: claire-clairmont
+    name: Claire Clairmont
+    birth_name: Clara Mary Jane Clairmont
+    sex: F
+    birth: { date: 1798-04-27, place: Brislington, near Bristol }
+    death: { date: 1879-03-19, place: Florence }
+    notes: Mary Shelley's stepsister (no blood relation). Was at Geneva in summer 1816. Father identified in 2010 as Sir John Lethbridge; left unknown in the tree on purpose (test case for a missing parent).
+    source: https://en.wikipedia.org/wiki/Claire_Clairmont
+    verified: false
+
+  - id: william-godwin-jr
+    name: William Godwin the Younger
+    sex: M
+    birth: { date: 1803-03-28, place: London }
+    death: { date: 1832-09-08, place: London }
+    notes: Half-brother of BOTH Mary Shelley (same father) and Claire Clairmont (same mother), while Mary and Claire are not related by blood. Key test case.
+    source: https://en.wikipedia.org/wiki/William_Godwin_the_Younger
+    verified: false
+
+  # --- Mary and Percy ---
+  - id: mary-shelley
+    name: Mary Shelley
+    birth_name: Mary Wollstonecraft Godwin
+    sex: F
+    birth: { date: 1797-08-30, place: Somers Town, London }
+    death: { date: 1851-02-01, place: Chester Square, London }
+    notes: Author of Frankenstein, begun at Geneva in June 1816.
+    source: https://en.wikipedia.org/wiki/Mary_Shelley
+    verified: false
+
+  - id: percy-shelley
+    name: Percy Bysshe Shelley
+    sex: M
+    birth: { date: 1792-08-04, place: Field Place, Horsham, Sussex }
+    death: { date: 1822-07-08, place: Gulf of La Spezia, Italy, description: drowned while sailing back from Livorno }
+    source: https://en.wikipedia.org/wiki/Percy_Bysshe_Shelley
+    check: The day of death is usually given as 8 July 1822 (the day of the storm); bodies were found about ten days later.
+    verified: false
+
+  - id: harriet-westbrook
+    name: Harriet Shelley
+    birth_name: Harriet Westbrook
+    sex: F
+    birth: { date: 1795-08-01, place: London }
+    death: { date: 1816-12, place: London }
+    notes: Percy's first wife. Sensitive - drowned in the Serpentine; body found 10 December 1816.
+    source: https://en.wikipedia.org/wiki/Harriet_Westbrook
+    verified: false
+
+  - id: ianthe-shelley
+    name: Ianthe Shelley
+    sex: F
+    birth: { date: 1813-06-23, place: London }
+    death: { date: 1876 }
+    source: https://en.wikipedia.org/wiki/Harriet_Westbrook
+    verified: false
+
+  - id: charles-bysshe-shelley
+    name: Charles Bysshe Shelley
+    sex: M
+    birth: { date: 1814-11-30, place: London }
+    death: { date: 1826-04-14 }
+    source: https://en.wikipedia.org/wiki/Harriet_Westbrook
+    verified: false
+
+  - id: shelley-daughter-1815
+    name: Clara Shelley
+    sex: F
+    birth: { date: 1815-02-22, place: London }
+    death: { date: 1815-03-06, place: London }
+    notes: Born two months premature. Often described as unnamed; some chronologies call her Clara.
+    source: https://www.uv.es/~fores/mscro.html
+    check: Name uncertain - decide whether to store her as "unnamed daughter".
+    verified: false
+
+  - id: william-shelley
+    name: William Shelley
+    sex: M
+    birth: { date: 1816-01-24, place: London }
+    death: { date: 1819-06-07, place: Rome }
+    source: https://www.uv.es/~fores/mscro.html
+    verified: false
+
+  - id: clara-everina-shelley
+    name: Clara Everina Shelley
+    sex: F
+    birth: { date: 1817-09-02, place: Marlow }
+    death: { date: 1818-09-24, place: Venice }
+    source: https://www.uv.es/~fores/mscro.html
+    verified: false
+
+  - id: percy-florence-shelley
+    name: Percy Florence Shelley
+    sex: M
+    birth: { date: 1819-11-12, place: Florence }
+    death: { date: 1889-12-05 }
+    notes: The only child of Mary and Percy who survived to adulthood. Named after the city where he was born.
+    source: https://en.wikipedia.org/wiki/Sir_Percy_Shelley,_3rd_Baronet
+    verified: false
+
+  # --- Byron ---
+  - id: lord-byron
+    name: Lord Byron
+    birth_name: George Gordon Byron
+    sex: M
+    birth: { date: 1788-01-22, place: London }
+    death: { date: 1824-04-19, place: Missolonghi, Greece }
+    notes: Rented Villa Diodati in June 1816 and proposed the ghost-story contest.
+    source: https://en.wikipedia.org/wiki/Lord_Byron
+    verified: false
+
+  - id: annabella-milbanke
+    name: Anne Isabella Milbanke
+    also_known_as: Annabella, Lady Byron
+    sex: F
+    birth: { date: 1792-05-17 }
+    death: { date: 1860-05-16 }
+    source: https://en.wikipedia.org/wiki/Anne_Isabella_Byron,_Baroness_Byron
+    verified: false
+
+  - id: ada-lovelace
+    name: Ada Lovelace
+    birth_name: Augusta Ada Byron
+    sex: F
+    birth: { date: 1815-12-10, place: London }
+    death: { date: 1852-11-27, place: London }
+    notes: Mathematician, often called the first computer programmer. Byron's only legitimate child.
+    source: https://en.wikipedia.org/wiki/Ada_Lovelace
+    verified: false
+
+  - id: allegra-byron
+    name: Allegra Byron
+    birth_name: Clara Allegra Byron
+    sex: F
+    birth: { date: 1817-01-12, place: Bath }
+    death: { date: 1822-04-20, place: Bagnacavallo, Italy }
+    notes: Daughter of Byron and Claire Clairmont. Half-sister of Ada Lovelace.
+    source: https://en.wikipedia.org/wiki/Allegra_Byron
+    check: Wikipedia gives 20 April 1822; the uv.es chronology gives 19 April. Sources disagree - good example for the post.
+    verified: false
+
+  # --- Polidori (optional extension: the Italian connection) ---
+  - id: john-polidori
+    name: John William Polidori
+    sex: M
+    birth: { date: 1795-09-07, place: London }
+    death: { date: 1821-08-24, place: London }
+    notes: Byron's physician at Villa Diodati. Wrote The Vampyre during the 1816 contest. Son of the Tuscan scholar Gaetano Polidori; uncle of Dante Gabriel and Christina Rossetti.
+    source: https://en.wikipedia.org/wiki/John_William_Polidori
+    optional: true
+    verified: false
+
+families:
+
+  - id: godwin-wollstonecraft
+    partners: [william-godwin, mary-wollstonecraft]
+    union: marriage
+    marriage: { date: 1797-03-29, place: St Pancras Church, London }
+    children:
+      - { id: mary-shelley, relation: birth }
+
+  - id: imlay-wollstonecraft
+    partners: [gilbert-imlay, mary-wollstonecraft]
+    union: partnership
+    children:
+      - { id: fanny-imlay, relation: birth }
+
+  - id: godwin-clairmont
+    partners: [william-godwin, mary-jane-godwin]
+    union: marriage
+    marriage: { date: 1801-12-21 }
+    children:
+      - { id: william-godwin-jr, relation: birth }
+      - { id: mary-shelley, relation: step }
+      - { id: fanny-imlay, relation: step }
+      - { id: charles-clairmont, relation: step }
+      - { id: claire-clairmont, relation: step }
+
+  # Charles's and Claire's fathers are left unknown on purpose
+  - id: clairmont-unknown-father-charles
+    partners: [null, mary-jane-godwin]
+    union: unknown
+    children:
+      - { id: charles-clairmont, relation: birth }
+
+  - id: clairmont-unknown-father-claire
+    partners: [null, mary-jane-godwin]
+    union: unknown
+    children:
+      - { id: claire-clairmont, relation: birth }
+
+  - id: shelley-westbrook
+    partners: [percy-shelley, harriet-westbrook]
+    union: marriage
+    marriage: { date: 1811-08-28, place: Edinburgh }
+    children:
+      - { id: ianthe-shelley, relation: birth }
+      - { id: charles-bysshe-shelley, relation: birth }
+
+  - id: shelley-godwin
+    partners: [percy-shelley, mary-shelley]
+    union: marriage
+    marriage: { date: 1816-12-30, place: St Mildred's Church, London }
+    notes: They eloped in July 1814 and married only after Harriet's death.
+    children:
+      - { id: shelley-daughter-1815, relation: birth }
+      - { id: william-shelley, relation: birth }
+      - { id: clara-everina-shelley, relation: birth }
+      - { id: percy-florence-shelley, relation: birth }
+
+  - id: byron-milbanke
+    partners: [lord-byron, annabella-milbanke]
+    union: marriage
+    marriage: { date: 1815-01-02, place: Seaham Hall, County Durham }
+    children:
+      - { id: ada-lovelace, relation: birth }
+
+  - id: byron-clairmont
+    partners: [lord-byron, claire-clairmont]
+    union: partnership
+    children:
+      - { id: allegra-byron, relation: birth }
+
+# Relations the code must DERIVE correctly from the families above (used as checks)
+derived_checks:
+  - { a: mary-shelley, b: fanny-imlay, expected: half-sisters (same mother) }
+  - { a: mary-shelley, b: claire-clairmont, expected: step-sisters, no blood relation }
+  - { a: mary-shelley, b: william-godwin-jr, expected: half-siblings (same father) }
+  - { a: claire-clairmont, b: william-godwin-jr, expected: half-siblings (same mother) }
+  - { a: ada-lovelace, b: allegra-byron, expected: half-sisters (same father) }
+  - { a: percy-florence-shelley, b: william-godwin, expected: grandson / grandfather }
+  - { a: percy-florence-shelley, b: ianthe-shelley, expected: half-siblings (same father) }
+  - { a: allegra-byron, b: mary-shelley, expected: niece by step-relation (Allegra's mother is Mary's stepsister) }
