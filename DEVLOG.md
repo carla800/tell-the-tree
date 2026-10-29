@@ -209,3 +209,24 @@ The app is called **Tell the Tree**: you tell it, and the tree is drawn. In Ital
 The logo is a speech bubble with a family inside, drawn with the app's own notation: two parents, the diamond knot that joins them, and a child below in the accent colour. It takes the theme's colours (red and ink in the register, gold and parchment at Villa Diodati) and stays readable as a 16-pixel browser icon, which also switches colours in dark mode.
 
 The cover for the post (`docs/images/cover.png`) is a real screenshot, not a mock-up: the sentence "Percy Florence Shelley married Jane St John in 1848" and the dashed card that appears for Jane before anything is saved.
+
+## The holdout: six sentences I wrote before the engine existed
+
+I wrote them on day 0 and kept them secret: four about an invented family in everyday spoken Italian, two about Villa Diodati with traps on purpose. On day 3 I turned them into the scoring format *before* running anything, sealed the code with the git tag `holdout-run`, and ran them once with Gemma 4 E2B.
+
+**Model 1/6, code 5/6, 0.6 minutes.** On my 15 dev sentences it was 14/15 and 15/15.
+
+| | What I meant | What happened |
+|---|---|---|
+| h01 "Nonna Lucia era la sorella di zio Pietro." | Lucia and Pietro are siblings | Right relation, but the name became "Nonna Lucia": the prompt says *copy names as written*, and in spoken Italian the title travels with the name |
+| h02 "La Maria, quella che ha sposato il figlio di nonno Carlo…" | Maria married a son of Carlo (no name given) | Gemma invented a person called "figlio di nonno Carlo" |
+| h03 "Ti ricordi Anna? Sua mamma era la zia Teresa, sorella di papà." | Teresa is Anna's mother | A person called "papà", and Anna's mother lost |
+| h04 "Quando è nato Luigi, sua sorella Rosa aveva già cinque anni." | Rosa and Luigi are siblings | Only a description of Luigi's birth, in English |
+| h05 "Mary Godwin, che poi diventò Mary Shelley, era la compagna di Percy…" | One Mary, a couple | "compagna" read right, the code rightly asked *which Mary Godwin*, but Gemma invented a wedding in 1816 at Villa Diodati |
+| h06 "William Godwin era il padre di Mary Godwin, mentre William Polidori era il padre di John William Polidori…" | Two different Williams | **Gemma was right; my code was wrong.** Names are matched by their parts, "William Polidori" fits inside "John William Polidori", so the two became one person and the sentence was rejected as "his own parent". Exactly the trap I had written down. |
+
+**What it means.** My dev sentences were tidy; real family talk isn't. Titles stuck to names, people with no name ("papà"), descriptions instead of names, relations that are only implied ("sua mamma", "sua sorella"). A 2B model copies what it sees.
+
+And an honest note on the 5/6: the code score only checks save / ask / reject. Three of those saves would store wrong names. What stops them is the preview: before anything is saved, you read "New person: papà" and press Discard. That's why nothing is saved without a person seeing it.
+
+**Not fixed before publishing**, so the score above stays the real one. Next: the two-Williams bug (a name in full in a sentence means a shorter name in the same sentence is someone else), kinship titles before names, words that aren't names becoming a question instead of a person, and running the same six with E4B.
