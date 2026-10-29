@@ -195,3 +195,19 @@ def test_a_fact_said_both_ways_counts_once():
     ops = llm.interpret(raw)["ops"]
     assert [o["op"] for o in ops].count("siblings") == 1
     assert {(o["name"], o["sex"]) for o in ops if o["op"] == "person"} == {("Marco", "M"), ("Roberta", "F")}
+
+
+def test_scoring_accepts_either_name_when_the_sentence_gives_two():
+    expected = [{"any_of": [{"op": "union", "partners": ["Mary Godwin", "Percy"], "type": "partnership"},
+                            {"op": "union", "partners": ["Mary Shelley", "Percy"], "type": "partnership"}]}]
+    assert score_ops(expected, [{"op": "union", "partners": ["Percy", "Mary Shelley"], "type": "partnership"}])["ok"]
+    assert not score_ops(expected, [{"op": "union", "partners": ["Percy", "Mary Jane"], "type": "partnership"}])["ok"]
+
+
+def test_the_holdout_is_written_and_complete():
+    """The secret sentences, turned into the scoring format before any model saw them."""
+    holdout = yaml.safe_load((ROOT / "tests" / "sentences.yaml").read_text(encoding="utf-8"))["holdout"]
+    assert [c["id"] for c in holdout] == ["h01", "h02", "h03", "h04", "h05", "h06"]
+    for case in holdout:
+        assert case["sentence"] and case["expected_ops"] and case["expect_code"] and case["tree"] in ("empty", "villa-diodati")
+        expected_statuses(case["expect_code"])

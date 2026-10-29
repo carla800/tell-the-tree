@@ -137,33 +137,70 @@ dev:
 # step-relation; one sentence with no family facts; one with several facts at once;
 # one that says something impossible.
 holdout:
+# Written by Carla in tests/holdout.txt before the engine existed, kept secret until the code was finished.
+# Turned into this format on 29 Oct, BEFORE running any model on them, and committed before the run.
+# Her words for each case are kept as `expected`; the ops are the closest thing the data model can store.
+
   - id: h01
-    tree:
-    sentence:
+    tree: empty
+    sentence: "Nonna Lucia era la sorella di zio Pietro."
+    expected: "Lucia e Pietro sono fratelli."
+    # "Nonna" and "zio" are what the speaker calls them, not their names
     expected_ops:
-    expect_code:
+      - { op: siblings, people: [Lucia, Pietro], kind: unspecified }
+    expect_code: save
+
   - id: h02
-    tree:
-    sentence:
+    tree: empty
+    sentence: "La Maria, quella che ha sposato il figlio di nonno Carlo, si chiama così anche lei."
+    expected: "Maria è sposata con un figlio di Carlo; il nome del marito non è specificato. Non confondere questa Maria con altre persone omonime."
+    # The tree can't hold a person without a name, so the unnamed husband can't be stored.
+    # The most it can keep is that Maria is Carlo's in-law (daughter-in-law).
     expected_ops:
-    expect_code:
+      - { op: relation_hint, a: Maria, b: Carlo, kind: in_law }
+    expect_code: save
+
   - id: h03
-    tree:
-    sentence:
+    tree: empty
+    sentence: "Ti ricordi Anna? Sua mamma era la zia Teresa, sorella di papà."
+    expected: "Teresa è la madre di Anna ed è sorella del padre di chi parla; Anna è cugina di chi parla."
+    # The tree has no "me" and "papà" has no name: the part that can be stored is Teresa as Anna's mother.
+    # A person called "papà" would be wrong.
     expected_ops:
-    expect_code:
+      - { op: child, child: Anna, parents: [Teresa], relation: birth }
+    expect_code: save
+
   - id: h04
-    tree:
-    sentence:
+    tree: empty
+    sentence: "Quando è nato Luigi, sua sorella Rosa aveva già cinque anni."
+    expected: "Luigi e Rosa sono fratelli; Rosa è più grande di Luigi di circa cinque anni."
+    # No year is given, so the five years can't become dates
     expected_ops:
-    expect_code:
+      - { op: siblings, people: [Rosa, Luigi], kind: unspecified }
+    expect_code: save
+
   - id: h05
-    tree:
-    sentence:
+    tree: villa-diodati
+    sentence: "Mary Godwin, che poi diventò Mary Shelley, era la compagna di Percy Bysshe Shelley quando soggiornarono vicino a Villa Diodati nel 1816."
+    expected: "Mary Godwin e Mary Shelley sono la stessa persona; Mary e Percy Bysshe Shelley erano una coppia. Non creare due persone distinte per Mary."
     expected_ops:
-    expect_code:
+      - any_of:
+          - { op: union, partners: [Mary Godwin, Percy Bysshe Shelley], type: partnership }
+          - { op: union, partners: [Mary Shelley, Percy Bysshe Shelley], type: partnership }
+    also_ok:
+      - { op: event, person: Mary Godwin, type: residence }
+      - { op: event, person: Mary Shelley, type: residence }
+      - { op: event, partners: [Mary Godwin, Percy Bysshe Shelley], type: residence }
+      - { op: event, partners: [Mary Shelley, Percy Bysshe Shelley], type: residence }
+    # "Mary Godwin" also matches Mary Jane Godwin, so asking which Mary is right too; a new Mary is not
+    expect_code: [save, ask_which]
+
   - id: h06
-    tree:
-    sentence:
+    tree: villa-diodati
+    sentence: "William Godwin era il padre di Mary Godwin, mentre William Polidori era il padre di John William Polidori, presente a Villa Diodati."
+    expected: "William Godwin è il padre di Mary Godwin; William Polidori è il padre di John William Polidori. I due William sono persone diverse e non vanno fusi; John William Polidori è una terza persona."
     expected_ops:
-    expect_code:
+      - { op: child, child: Mary Godwin, parents: [William Godwin], relation: birth }
+      - { op: child, child: John William Polidori, parents: [William Polidori], relation: birth }
+    # "Mary Godwin" needs an answer (Mary Shelley or Mary Jane Godwin); William Polidori must not become John William Polidori
+    expect_code: ask_which

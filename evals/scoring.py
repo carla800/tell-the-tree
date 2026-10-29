@@ -13,11 +13,14 @@ def op_matches(expected: dict, actual: dict) -> bool:
 
 
 def score_ops(expected_ops: list[dict], actual_ops: list[dict], also_ok: list[dict] | None = None) -> dict:
-    """`also_ok`: operations that are fine but not required (a second reasonable reading of the sentence)."""
+    """`also_ok`: operations that are fine but not required (a second reasonable reading of the sentence).
+    An expected operation can be `{any_of: [op, op]}` when the sentence names the same person
+    in two ways ("Mary Godwin, who later became Mary Shelley") and either name is right."""
     remaining = list(actual_ops)
     missing = []
     for exp in expected_ops:
-        hit = next((a for a in remaining if op_matches(exp, a)), None)
+        forms = exp["any_of"] if "any_of" in exp else [exp]
+        hit = next((a for a in remaining if any(op_matches(form, a) for form in forms)), None)
         if hit is None:
             missing.append(exp)
         else:
