@@ -176,3 +176,28 @@ Typing a sentence isn't always the quickest way, so now you can also click a per
 - *A son older than his mother was accepted* when the relation and the birth arrived together, by hand or in a sentence like "Paolo, born in 1940, is Virginia's son". The check only worked if the birth was already in the tree before the relation. Now a birth is also checked against the parents.
 
 139 tests.
+
+## Editing, deleting, GEDCOM, PDF, search: built fast, then reviewed
+
+On my own I added a lot in one afternoon: deleting trees, editing and deleting people, editing links, a vertical view, search, a short story of Villa Diodati with a photo, GEDCOM import and export, and two PDFs (the register and a drawing of the tree). Then I had it all reviewed: reading the code, and also trying each feature on purpose to break it.
+
+**What the review found** (every one reproduced, not guessed):
+- "Add partner → new union" created a family with only the *other* person in it.
+- The cycle check for "add child" was upside down: William Godwin could be made his own daughter's son, and Ada (born 1815) the daughter of Mary Wollstonecraft (died 1797).
+- Editing a person skipped every check: Allegra, born in 1817, could die in 1700.
+- The GEDCOM export wrote whoever was saved first as the husband, so Maria Rossi became Marco's husband in any other program. It also had no SUBM record and no FAMC/FAMS links, and it lost birth names, residences, jobs and sources.
+- The Villa Diodati story never showed on a computer (the panel squeezed it to zero height), and a hidden file input made the whole page scroll.
+- The tree PDF put every family on one shared line per generation: you couldn't tell whose child was whose.
+- About 70 texts were written straight into the components instead of the translations.
+- None of the 139 tests covered any of it.
+
+**What changed:**
+- **Every way into the tree goes through the same checks.** Editing a person now checks the dates against their parents, their children and their own birth and death, with the same messages as a sentence, in both languages. An edited event is marked "By hand", because its old source no longer says it.
+- **Links can be removed, not added, by hand.** Adding a link already has two checked ways in (a sentence, or "Add a relative"), so the link editor became "Fix a wrong link": it lists the families with readable names ("Family of Lord Byron and Claire Clairmont", not "Family #8") and removes one link at a time. Nobody is ever deleted there.
+- **GEDCOM, rewritten.** Husband and wife by sex, a submitter record, FAMC/FAMS with adoptions (PEDI) and stepchildren, birth names, residences, jobs, divorces, other events, sources travelling with each fact, dates in GEDCOM form ("30 DEC 1816", "ABT 1815", and "INT 19 APR 1822 (19 or 20 April 1822)" when the date has words that must not be lost). Import reads all of it back, plus CONC/CONT notes, note and source records, and files from other programs. **Exporting the demo and importing it again gives back the same tree**, and a test checks it. Errors are explained in the interface's language.
+- **The register PDF** is in both languages, uses the app's own fonts (Atkinson Hyperlegible and IM Fell English, open licence, now in `backend/fonts`), so it looks the same on every computer, and uses a system font for letters they don't have ("Łucja" prints).
+- **"Print the tree"** replaces the tree PDF. It prints exactly the drawing on the screen, which is readable: the canvas takes the shape of an A4 landscape page, the whole tree is fitted into it, and it is printed on white with its title and key.
+- Search and the horizontal/vertical switch moved onto the tree, the header got lighter, the search moves the view to the person, and a plain click on a card no longer moves it.
+- The photo of Villa Diodati now has its credit, linked to Wikimedia Commons.
+
+**The lesson for me:** the features were good ideas, and editing was even the "known limit" I had planned to confess in the post. But I wrote them without tests, and each bug was something a test catches in seconds. And the heart of this project, *nothing is saved without checks*, has to hold for every way into the tree, not just for sentences. 151 tests.

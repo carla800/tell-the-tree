@@ -102,6 +102,8 @@ MESSAGES = {
                            "Nell'albero la morte di {name} è nel {died}, non nel {year}."),
     "err_death_before_birth": ("{name} was born in {born}, so can't die in {year}.",
                                "La nascita di {name} è nel {born}: la morte non può essere nel {year}."),
+    "err_died_before_child": ("{name} can't have died in {died}: their child {child} was born in {cb}.",
+                              "La morte di {name} non può essere nel {died}: la nascita di {child}, che è suo figlio o figlia, è nel {cb}."),
     "err_event_before_birth": ("{name} was born in {born}: nothing can happen to them in {year}.",
                                "La nascita di {name} è nel {born}: nel {year} non può essere successo niente."),
     # the sentence itself
@@ -109,6 +111,13 @@ MESSAGES = {
                           "{parent} avrebbe avuto {age} anni alla nascita di {child}."),
     "unknown_word": ('I don\'t know the relation "{word}" ({who}).', 'Non conosco la parentela "{word}" ({who}).'),
     "couple_needs_one": ('"{word}" needs exactly one partner ({who}).', '"{word}" vuole una sola persona come coppia ({who}).'),
+    "gedcom_too_big": ("The GEDCOM file is too big (15 MB at most).", "Il file GEDCOM è troppo grande (al massimo 15 MB)."),
+    "gedcom_encoding": ("This file's text encoding isn't one a GEDCOM uses.", "La codifica del testo di questo file non è quella di un GEDCOM."),
+    "gedcom_bad_line": ("Line {line} is not a GEDCOM line.", "La riga {line} non è una riga GEDCOM."),
+    "gedcom_bad_level": ("Line {line} has a level that doesn't follow the line before.",
+                         "La riga {line} ha un livello che non segue la riga precedente."),
+    "gedcom_no_people": ("This GEDCOM has no people in it.", "Questo GEDCOM non contiene persone."),
+    "tree_exists": ("A tree called \"{name}\" already exists.", "Esiste già un albero chiamato \"{name}\"."),
     "part_not_read": ("Part of this sentence couldn't be turned into tree facts.",
                       "Una parte della frase non è diventata un fatto dell'albero."),
 }

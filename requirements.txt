@@ -1,7 +1,8 @@
-ollama
-pyyaml
 fastapi
-uvicorn
-pytest
 httpx
 jsonschema
+ollama
+pytest
+pyyaml
+reportlab>=4.0
+uvicorn

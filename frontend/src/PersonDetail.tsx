@@ -3,8 +3,11 @@ import { api, photoUrl, shrinkPicture } from "./api";
 import { useI18n, type Strings } from "./i18n";
 import type { Person, TreeData } from "./types";
 
-/** "1797-08-30" becomes "30 August 1797" / "30 agosto 1797". Anything else is shown as written. */
+/** "1797-08-30" becomes "30 August 1797" / "30 agosto 1797", "about 1890" becomes "circa 1890".
+ *  Anything else is shown as written. */
 function readableDate(t: Strings, text: string | null): string | null {
+  const qualified = text?.match(/^(about|before|after)\s+(.+)$/);
+  if (qualified) return `${t.dateQualifiers[qualified[1]]} ${readableDate(t, qualified[2])}`;
   const m = text?.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/);
   if (!m) return text;
   return t.dayMonthYear(m[3] ? String(Number(m[3])) : null, t.months[Number(m[2]) - 1], m[1]);
@@ -17,6 +20,7 @@ function Source({ text }: { text: string | null }) {
     return <a className="source" href={text} target="_blank" rel="noreferrer">{t.sourceWeb(new URL(text).hostname)}</a>;
   }
   if (text === "By hand") return <span className="source">{t.byHand}</span>;
+  if (text === "GEDCOM import") return <span className="source">{t.gedcomSource}</span>;
   const sentence = text.match(/^From: "(.*)"$/s);
   return <span className="source">{sentence ? t.fromSentence(sentence[1]) : text}</span>;
 }

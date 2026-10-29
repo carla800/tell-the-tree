@@ -19,11 +19,11 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import llm
+from . import gedcom_io, llm, pdf_export
 from .db import connect
 from .messages import Message, translate
-from .planner import apply_plan, make_plan
-from .tree import load_tree
+from .planner import BY_HAND, apply_plan, check_person_dates, make_plan
+from .tree import load_tree, year_of
 
 TREES = Path(__file__).resolve().parent.parent / "trees"
 TREES.mkdir(exist_ok=True)
@@ -62,6 +62,26 @@ class PlanRequest(BaseModel):
 class ApplyRequest(PlanRequest):
     sentence: str = ""
     by_hand: bool = False                # added with the form in the interface, not with a sentence
+
+
+class PersonEdit(BaseModel):
+    name: str
+    birth_name: str | None = None
+    also_known_as: str | None = None
+    sex: str = "U"
+    notes: str | None = None
+    birth_date: str | None = None
+    birth_place: str | None = None
+    death_date: str | None = None
+    death_place: str | None = None
+    lang: str = "en"
+
+
+class LinkRemoval(BaseModel):
+    """Removing one link: a partner from a couple, or a child from a family. People are never deleted here."""
+    action: str          # remove_partner | remove_child
+    family_id: int
+    person_id: int
 
 
 def _path(name: str) -> Path:
@@ -126,6 +146,20 @@ def create_tree(req: NewTree):
         raise HTTPException(409, f"'{req.name}' already exists.")
     connect(path).close()
     return {"name": req.name}
+
+
+@app.delete("/api/trees/{name}")
+def delete_tree(name: str):
+    if name == "villa-diodati":
+        raise HTTPException(403, "The demonstration tree cannot be deleted.")
+    path = _path(name)
+    if not path.is_file():
+        raise HTTPException(404, f"No tree called '{name}'.")
+    try:
+        path.unlink()
+    except OSError as exc:
+        raise HTTPException(500, f"Could not delete tree: {exc}") from exc
+    return {"deleted": name}
 
 
 @app.get("/api/trees/{name}")
@@ -208,6 +242,135 @@ def delete_photo(name: str, pid: int):
     return {"photo": None}
 
 
+def _drop_empty_families(conn):
+    """A family with no children and fewer than two partners links nobody: remove it
+    (unless one partner is left with the family's events, e.g. a wedding date)."""
+    conn.execute("""
+        DELETE FROM family WHERE NOT EXISTS (SELECT 1 FROM family_child fc WHERE fc.family_id = family.id)
+          AND (partner1_id IS NULL OR partner2_id IS NULL)
+          AND (partner1_id IS NULL AND partner2_id IS NULL
+               OR NOT EXISTS (SELECT 1 FROM event e WHERE e.family_id = family.id))""")
+
+
+@app.put("/api/trees/{name}/people/{pid}")
+def edit_person(name: str, pid: int, req: PersonEdit):
+    """Edits a person with the form. The dates go through the same checks as a sentence."""
+    if not req.name.strip() or len(req.name.strip()) > 200:
+        raise HTTPException(400, "A name is required (max 200 characters).")
+    if req.sex not in ("F", "M", "U"):
+        raise HTTPException(400, "Invalid sex.")
+    clean = lambda v: (v or "").strip() or None  # noqa: E731
+    wanted = {"birth": (clean(req.birth_date), clean(req.birth_place)),
+              "death": (clean(req.death_date), clean(req.death_place))}
+    with closing(_open(name)) as conn, conn:
+        _person_exists(conn, pid)
+        errors = check_person_dates(load_tree(conn), pid, year_of(wanted["birth"][0]), year_of(wanted["death"][0]))
+        if errors:
+            raise HTTPException(409, {"message": translate(errors[0], req.lang),
+                                      "errors": [translate(e, req.lang) for e in errors]})
+        conn.execute("UPDATE person SET name=?, birth_name=?, also_known_as=?, sex=?, notes=? WHERE id=?",
+                     (req.name.strip(), clean(req.birth_name), clean(req.also_known_as), req.sex, clean(req.notes), pid))
+        for kind, (date, place) in wanted.items():
+            row = conn.execute("SELECT id, date_text, place FROM event WHERE person_id=? AND type=? ORDER BY id",
+                               (pid, kind)).fetchone()
+            if row and not date and not place:
+                conn.execute("DELETE FROM event WHERE id=?", (row["id"],))
+            elif row and (row["date_text"], row["place"]) != (date, place):
+                # changed by hand: the old source no longer says this
+                conn.execute("UPDATE event SET date_text=?, place=?, source=? WHERE id=?", (date, place, BY_HAND, row["id"]))
+            elif not row and (date or place):
+                conn.execute("INSERT INTO event (person_id, type, date_text, place, source) VALUES (?, ?, ?, ?, ?)",
+                             (pid, kind, date, place, BY_HAND))
+        return _tree_json(conn)
+
+
+@app.delete("/api/trees/{name}/people/{pid}")
+def delete_person(name: str, pid: int):
+    """Deletes a person with their events, photo and links. Their relatives stay in the tree."""
+    with closing(_open(name)) as conn, conn:
+        _person_exists(conn, pid)
+        conn.execute("UPDATE family SET partner1_id=NULL WHERE partner1_id=?", (pid,))
+        conn.execute("UPDATE family SET partner2_id=NULL WHERE partner2_id=?", (pid,))
+        conn.execute("DELETE FROM person WHERE id=?", (pid,))   # events, photo, child links and notes go with it
+        _drop_empty_families(conn)
+        return _tree_json(conn)
+
+
+@app.post("/api/trees/{name}/relations/remove")
+def remove_link(name: str, req: LinkRemoval):
+    """Fixes a wrong link. New links are added with a sentence or with "Add a relative",
+    which go through the planner's checks."""
+    with closing(_open(name)) as conn, conn:
+        family = conn.execute("SELECT * FROM family WHERE id=?", (req.family_id,)).fetchone()
+        if family is None:
+            raise HTTPException(404, "Family not found.")
+        if req.action == "remove_partner":
+            slot = next((s for s in ("partner1_id", "partner2_id") if family[s] == req.person_id), None)
+            if slot is None:
+                raise HTTPException(404, "This person is not a partner in this family.")
+            conn.execute(f"UPDATE family SET {slot}=NULL WHERE id=?", (req.family_id,))
+        elif req.action == "remove_child":
+            if conn.execute("DELETE FROM family_child WHERE family_id=? AND child_id=?",
+                            (req.family_id, req.person_id)).rowcount == 0:
+                raise HTTPException(404, "This person is not a child in this family.")
+        else:
+            raise HTTPException(400, "Unknown action.")
+        _drop_empty_families(conn)
+        return _tree_json(conn)
+
+
 @app.get("/api/health")
 def health():
     return {"model": llm.MODEL, "prompt": llm.PROMPT_VERSION}
+
+
+# ---------- GEDCOM and PDF ----------
+
+def _gedcom_error(exc: gedcom_io.GedcomError, lang: str):
+    return HTTPException(400, translate(exc.message, lang))
+
+
+@app.post("/api/gedcom/preview")
+async def preview_gedcom(request: Request, lang: str = "en"):
+    """What a GEDCOM file contains, before importing it."""
+    try:
+        return gedcom_io.preview(await request.body())
+    except gedcom_io.GedcomError as exc:
+        raise _gedcom_error(exc, lang) from exc
+
+
+@app.post("/api/gedcom/import/{name}")
+async def import_gedcom(name: str, request: Request, lang: str = "en"):
+    """A GEDCOM file becomes a new tree. Nothing is created if the file can't be read."""
+    path = _path(name)
+    if path.exists():
+        raise HTTPException(409, translate(Message("tree_exists", name=name), lang))
+    raw = await request.body()
+    try:
+        gedcom_io.parse(raw)
+    except gedcom_io.GedcomError as exc:
+        raise _gedcom_error(exc, lang) from exc
+    try:
+        with closing(connect(path)) as conn, conn:
+            result = gedcom_io.import_into(conn, raw)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    return {"name": name, **result}
+
+
+@app.get("/api/trees/{name}/export.ged")
+def export_gedcom(name: str):
+    with closing(_open(name)) as conn:
+        data = gedcom_io.export(conn)
+    return Response(data, media_type="text/plain; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{name}.ged"'})
+
+
+@app.get("/api/trees/{name}/export.pdf")
+def export_pdf(name: str, lang: str = "en", title: str | None = None):
+    """The family register: every family and every person, ready to print or send."""
+    with closing(_open(name)) as conn:
+        data = pdf_export.create_pdf(conn, title or name.replace("-", " ").title(), lang=lang, demo=name == "villa-diodati")
+    return Response(data, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{name}.pdf"'})

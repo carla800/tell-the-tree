@@ -430,6 +430,30 @@ class Planner:
         return self.plan
 
 
+def check_person_dates(tree: Tree, pid: int, born: int | None, died: int | None) -> list:
+    """The same date checks as a sentence, for a person edited with the form.
+    `born` and `died` are the years the person would have after the edit."""
+    name = tree.people[pid].name
+    errors = []
+    if born is not None and died is not None and died < born:
+        errors.append(M("err_death_before_birth", name=name, born=born, year=died))
+    for p in tree.parents(pid):
+        p_born, p_died = tree.year(p, "birth"), tree.year(p, "death")
+        if born is not None and p_born is not None and p_born >= born:
+            errors.append(M("err_parent_younger", parent=tree.people[p].name, pb=p_born, child=name, cb=born))
+        if born is not None and p_died is not None and p_died < born - 1:
+            errors.append(M("err_parent_dead", parent=tree.people[p].name, pd=p_died, child=name, cb=born))
+    for c in tree.children(pid):
+        cb = tree.year(c, "birth")
+        if cb is None:
+            continue
+        if born is not None and cb <= born:
+            errors.append(M("err_born_after_child", name=name, year=born, child=tree.people[c].name, cb=cb))
+        if died is not None and died < cb - 1:
+            errors.append(M("err_died_before_child", name=name, died=died, child=tree.people[c].name, cb=cb))
+    return errors
+
+
 def _kin(kind: str) -> Term:
     """A relative's kind as a word ('other' is a relative here, not an event)."""
     return Term("relative" if kind == "other" else kind)

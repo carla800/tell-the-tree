@@ -3,7 +3,7 @@ import type { Choices, Plan, TreeData } from "./types";
 
 /** An error from the server, with its HTTP status so the interface can explain it in its own words. */
 export class ApiError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly errors: string[] = []) {
     super(message);
   }
 }
@@ -17,33 +17,50 @@ async function call<T>(path: string, init?: { method?: string; body?: unknown; r
   });
   if (!response.ok) {
     let message = `The server answered ${response.status}.`;
+    let errors: string[] = [];
     try {
       const detail = (await response.json()).detail;
       message = typeof detail === "string" ? detail : detail?.message ?? message;
+      errors = Array.isArray(detail?.errors) ? detail.errors : [];
     } catch {
       /* keep the generic message */
     }
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, errors);
   }
   return response.json() as Promise<T>;
 }
 
 export const api = {
+  previewGedcom: (file: File, lang: Lang) =>
+    call<{ people: number; families: number; sample: string[] }>(`/gedcom/preview?lang=${lang}`, { raw: file }),
+  importGedcom: (name: string, file: File, lang: Lang) =>
+    call<{ name: string; people: number; families: number }>(`/gedcom/import/${name}?lang=${lang}`, { raw: file }),
   health: () => call<{ model: string; prompt: string }>("/health"),
   listTrees: () => call<string[]>("/trees"),
   createTree: (name: string) => call<{ name: string }>("/trees", { body: { name } }),
   getTree: (name: string) => call<TreeData>(`/trees/${name}`),
+  deleteTree: (name: string) => call<{ deleted: string }>(`/trees/${name}`, { method: "DELETE" }),
   parse: (name: string, sentence: string, lang: Lang) =>
     call<{ model_ops: unknown[]; seconds: number; plan: Plan }>(`/trees/${name}/parse`, { body: { sentence, lang } }),
   plan: (name: string, model_ops: unknown[], choices: Choices, lang: Lang) =>
     call<{ plan: Plan }>(`/trees/${name}/plan`, { body: { model_ops, choices, lang } }),
   apply: (name: string, sentence: string, model_ops: unknown[], choices: Choices, lang: Lang, by_hand = false) =>
     call<{ saved: string[]; tree: TreeData }>(`/trees/${name}/apply`, { body: { sentence, model_ops, choices, lang, by_hand } }),
+  editPerson: (name: string, id: number, changes: Record<string, string | null>, lang: Lang) =>
+    call<TreeData>(`/trees/${name}/people/${id}`, { method: "PUT", body: { ...changes, lang } }),
+  deletePerson: (name: string, id: number) =>
+    call<TreeData>(`/trees/${name}/people/${id}`, { method: "DELETE" }),
+  removeLink: (name: string, action: "remove_partner" | "remove_child", familyId: number, personId: number) =>
+    call<TreeData>(`/trees/${name}/relations/remove`, { body: { action, family_id: familyId, person_id: personId } }),
   setPhoto: (name: string, personId: number, picture: Blob) =>
     call<{ photo: string }>(`/trees/${name}/people/${personId}/photo`, { method: "PUT", raw: picture }),
   removePhoto: (name: string, personId: number) =>
     call<{ photo: null }>(`/trees/${name}/people/${personId}/photo`, { method: "DELETE" }),
 };
+
+export const gedcomUrl = (tree: string) => `/api/trees/${tree}/export.ged`;
+export const registerUrl = (tree: string, lang: Lang, title: string) =>
+  `/api/trees/${tree}/export.pdf?lang=${lang}&title=${encodeURIComponent(title)}`;
 
 export const photoUrl = (tree: string, personId: number, version: string) =>
   `/api/trees/${tree}/people/${personId}/photo?v=${encodeURIComponent(version)}`;
