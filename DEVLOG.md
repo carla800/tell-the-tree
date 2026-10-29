@@ -201,3 +201,11 @@ On my own I added a lot in one afternoon: deleting trees, editing and deleting p
 - The photo of Villa Diodati now has its credit, linked to Wikimedia Commons.
 
 **The lesson for me:** the features were good ideas, and editing was even the "known limit" I had planned to confess in the post. But I wrote them without tests, and each bug was something a test catches in seconds. And the heart of this project, *nothing is saved without checks*, has to hold for every way into the tree, not just for sentences. 151 tests.
+
+## A name and a logo: Tell the Tree
+
+The app is called **Tell the Tree**: you tell it, and the tree is drawn. In Italian the panel already said "Racconta qualcosa all'albero", so the name was there all along.
+
+The logo is a speech bubble with a family inside, drawn with the app's own notation: two parents, the diamond knot that joins them, and a child below in the accent colour. It takes the theme's colours (red and ink in the register, gold and parchment at Villa Diodati) and stays readable as a 16-pixel browser icon, which also switches colours in dark mode.
+
+The cover for the post (`docs/images/cover.png`) is a real screenshot, not a mock-up: the sentence "Percy Florence Shelley married Jane St John in 1848" and the dashed card that appears for Jane before anything is saved.

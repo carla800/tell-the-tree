@@ -10,7 +10,7 @@ const MONTHS_EN = ["January", "February", "March", "April", "May", "June", "July
   "August", "September", "October", "November", "December"];
 
 const en = {
-  appName: "Family tree",
+  appName: "Tell the Tree",
   language: "Language",
   tree: "Tree",
   newTree: "New tree",
@@ -186,7 +186,7 @@ const MONTHS_IT = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
   "agosto", "settembre", "ottobre", "novembre", "dicembre"];
 
 const it: Strings = {
-  appName: "Albero di famiglia",
+  appName: "Tell the Tree",
   language: "Lingua",
   tree: "Albero",
   newTree: "Nuovo albero",

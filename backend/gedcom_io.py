@@ -138,7 +138,7 @@ class _Writer:
             self.line(level + 1, "SOUR", e["source"])
 
 
-def export(conn, app_name: str = "Family tree") -> bytes:
+def export(conn, app_name: str = "Tell the Tree") -> bytes:
     people = conn.execute("SELECT * FROM person ORDER BY id").fetchall()
     sex = {p["id"]: p["sex"] for p in people}
     names = {p["id"]: p["name"] for p in people}
@@ -149,7 +149,7 @@ def export(conn, app_name: str = "Family tree") -> bytes:
 
     w = _Writer()
     w.line(0, "HEAD")
-    w.line(1, "SOUR", "FAMILY_TREE_KIT")
+    w.line(1, "SOUR", "TELL_THE_TREE")
     w.line(2, "NAME", app_name)
     w.line(1, "DATE", date.today().strftime("%d %b %Y").upper())
     w.line(1, "SUBM", "@U1@")

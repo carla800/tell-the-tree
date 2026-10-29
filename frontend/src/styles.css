@@ -1030,6 +1030,10 @@ button.secondary:hover:not(:disabled) { border-color: var(--accent); }
 
 .print-title { display: none; }
 
+.brand { display: inline-flex; align-items: center; gap: 8px; align-self: center; }
+.brand .logo { flex: none; color: var(--text); }
+@media (max-width: 820px) { .brand { display: none; } }
+
 @media (max-width: 820px) {
   .tree-heading { flex-basis: 100%; order: -1; }
   .tree-heading .tree-title { flex-basis: auto; }

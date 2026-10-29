@@ -3,6 +3,7 @@ import { ReactFlowProvider } from "@xyflow/react";
 import { api, ApiError, gedcomUrl, registerUrl } from "./api";
 import { Bats } from "./Bats";
 import { ByHand } from "./ByHand";
+import { Logo } from "./Logo";
 import { PersonEditor } from "./PersonEditor";
 import { RelationEditor } from "./RelationEditor";
 import { PersonDetail } from "./PersonDetail";
@@ -286,7 +287,7 @@ export default function App() {
     <I18n.Provider value={i18n}>
     <div className="app">
       <header className="bar">
-        <span className="brand">{t.appName}</span>
+        <span className="brand"><Logo size={26} />{t.appName}</span>
         <div className="tree-heading">
           <h1 className="tree-title">{current ? displayTreeName(current, t) : t.appName}</h1>
           {current && current !== DEMO_TREE && (
