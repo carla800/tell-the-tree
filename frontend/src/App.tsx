@@ -17,11 +17,11 @@ import type { Choices, Plan, Question, TreeData } from "./types";
 // The project's name is in i18n.ts (appName) and index.html
 const DEMO_TREE = "villa-diodati";
 
-// The photo in the Villa Diodati story. Its licence asks to name the author: see README.
+// The photo in the Villa Diodati story: by Robertgrassi (2008), released into the public domain
+// on Wikimedia Commons. No credit is required; we give it anyway.
 const VILLA_PHOTO = {
-  page: "https://commons.wikimedia.org/wiki/File:Villa_Diodati.jpg",
-  author: "",          // TODO: author's name as written on Wikimedia Commons
-  license: "",         // TODO: e.g. "CC BY-SA 3.0"
+  page: "https://commons.wikimedia.org/wiki/File:Villa_diodati_2008.07.27_rg_5.JPG",
+  author: "Robertgrassi",
 };
 
 interface Pending {
@@ -352,7 +352,7 @@ export default function App() {
                 <img src="/villa-diodati.png" alt={t.introPhotoAlt} />
                 <figcaption>
                   <a href={VILLA_PHOTO.page} target="_blank" rel="noreferrer">
-                    {t.photoCredit}: {[VILLA_PHOTO.author, VILLA_PHOTO.license, "Wikimedia Commons"].filter(Boolean).join(", ")}
+                    {t.photoCredit}: {VILLA_PHOTO.author}, {t.publicDomain}, Wikimedia Commons
                   </a>
                 </figcaption>
               </figure>

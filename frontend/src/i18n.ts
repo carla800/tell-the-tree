@@ -114,6 +114,7 @@ const en = {
   introMore: "Discover the story",
   introStory: "Lord Byron, Percy Bysshe Shelley, Mary Godwin (later Mary Shelley), Claire Clairmont and John Polidori spent part of that season together. A challenge to invent ghost stories helped inspire Mary Shelley’s Frankenstein and Polidori’s The Vampyre. This tree explores the connections between the guests, rather than a family named Diodati.",
   photoCredit: "Photo",
+  publicDomain: "public domain",
 
   editInfo: "Edit information",
   fieldName: "Name",
@@ -290,6 +291,7 @@ const it: Strings = {
   introMore: "Scopri la storia",
   introStory: "Lord Byron, Percy Bysshe Shelley, Mary Godwin (poi Mary Shelley), Claire Clairmont e John Polidori trascorsero insieme parte di quella stagione. Una sfida a inventare storie di fantasmi contribuì alla nascita di Frankenstein di Mary Shelley e del racconto Il vampiro di Polidori. Questo albero racconta i legami tra i protagonisti, non la genealogia di una famiglia chiamata Diodati.",
   photoCredit: "Foto",
+  publicDomain: "pubblico dominio",
 
   editInfo: "Modifica informazioni",
   fieldName: "Nome",
