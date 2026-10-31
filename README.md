@@ -6,7 +6,7 @@ You write sentences like *"Mary's father was William Godwin"* or *"Allegra è fi
 
 ![Screenshot of Tell the Tree with the demo family](docs/images/cover.png)
 
-Built for DEV's "Ghost in the Machine" challenge, October 2026. It's my first hackathon.
+Built for DEV's "Ghost in the Machine" challenge, October 2026.
 
 ## Why I built it
 
